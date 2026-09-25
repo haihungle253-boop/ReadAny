@@ -5,7 +5,8 @@
 import type { GoalPeriod, GoalProgress, GoalType, StatsDimension } from "@readany/core/stats";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Modal, Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
+import { Modal } from "@/components/eink/EinkAware";
+import { Pressable, StyleSheet, Text, TextInput, TouchableOpacity, View } from "react-native";
 import Svg, { Circle } from "react-native-svg";
 import { useColors, withOpacity } from "@/styles/theme";
 import { formatCharacterCount } from "./stats-utils";

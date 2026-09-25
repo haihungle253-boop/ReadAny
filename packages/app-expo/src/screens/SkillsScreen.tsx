@@ -11,10 +11,9 @@ import type { Skill } from "@readany/core/types";
  */
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ActivityIndicator, Modal } from "@/components/eink/EinkAware";
 import {
-  ActivityIndicator,
   Alert,
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,

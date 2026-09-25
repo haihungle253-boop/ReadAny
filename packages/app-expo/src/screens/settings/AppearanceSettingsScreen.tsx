@@ -1,12 +1,19 @@
-import { BookOpenIcon, CheckIcon, ChevronDownIcon, MoonIcon, SunIcon } from "@/components/ui/Icon";
+import {
+  BookOpenIcon,
+  CheckIcon,
+  ChevronDownIcon,
+  MoonIcon,
+  SunIcon,
+  TabletIcon,
+} from "@/components/ui/Icon";
 import { useResponsiveLayout } from "@/hooks/use-responsive-layout";
 import { useTheme } from "@/styles/ThemeContext";
 import type { ThemeMode } from "@/styles/ThemeContext";
 import { fontSize, fontWeight, radius, spacing } from "@/styles/theme";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Modal } from "@/components/eink/EinkAware";
 import {
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -21,6 +28,7 @@ const THEMES: { id: ThemeMode; labelKey: string; fallback: string; Icon: typeof 
   { id: "light", labelKey: "settings.light", fallback: "Light", Icon: SunIcon },
   { id: "dark", labelKey: "settings.dark", fallback: "Dark", Icon: MoonIcon },
   { id: "sepia", labelKey: "settings.sepia", fallback: "Sepia", Icon: BookOpenIcon },
+  { id: "eink", labelKey: "settings.eink", fallback: "E-ink", Icon: TabletIcon },
 ];
 
 const LANGUAGES = [

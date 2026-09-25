@@ -52,14 +52,13 @@ import * as DocumentPicker from "expo-document-picker";
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ActivityIndicator, Modal } from "@/components/eink/EinkAware";
 import {
-  ActivityIndicator,
   Alert,
   Animated,
   AppState,
   type AppStateStatus,
   Easing,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -72,6 +71,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
+import { notePageTurn } from "@/lib/eink/eink-refresh";
 
 // ── Extracted modules ──
 import { ReaderNoteViewModal } from "./reader/ReaderNoteViewModal";
@@ -633,6 +633,8 @@ export function ReaderScreen({ route, navigation }: Props) {
       });
       if (loading) {
         setLoading(false);
+      } else {
+        notePageTurn();
       }
       // Track section changes for chapter translation reset
       const newSection = detail.section?.current ?? 0;
@@ -1150,6 +1152,7 @@ export function ReaderScreen({ route, navigation }: Props) {
           foreground: colors.foreground,
           muted: colors.mutedForeground,
           primary: colors.primary,
+          eink: themeMode === "eink",
         });
       } catch (err: any) {
         console.error("[ReaderScreen] Failed to load book:", err);
@@ -1227,6 +1230,7 @@ export function ReaderScreen({ route, navigation }: Props) {
       foreground: colors.foreground,
       muted: colors.mutedForeground,
       primary: colors.primary,
+      eink: themeMode === "eink",
     });
   }, [themeMode, webViewReady]);
 

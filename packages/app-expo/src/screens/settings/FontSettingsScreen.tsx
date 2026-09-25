@@ -16,11 +16,10 @@ import * as DocumentPicker from "expo-document-picker";
 import * as Font from "expo-font";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ActivityIndicator, Modal } from "@/components/eink/EinkAware";
 import {
-  ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   ScrollView,
   StyleSheet,

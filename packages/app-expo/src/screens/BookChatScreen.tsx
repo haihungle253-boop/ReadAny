@@ -7,12 +7,12 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Modal } from "@/components/eink/EinkAware";
 import {
   Alert,
   Animated,
   Image,
   Keyboard,
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -24,6 +24,8 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { useStreamingChat } from "@/hooks";
+import { useFullRefreshWhenStreamEnds } from "@/lib/eink/eink-refresh";
+import { useEinkThrottledValue } from "@/lib/eink/use-eink-throttle";
 import { useResponsiveLayout } from "@/hooks/use-responsive-layout";
 import { resolveActiveAIConfig } from "@/lib/ai/resolve-active-ai-config";
 import { useLibraryStore } from "@/stores";
@@ -235,7 +237,10 @@ export function BookChatScreen({ route, navigation }: Props) {
     return convertToMessageV2(activeThread.messages);
   }, [activeThread]);
 
-  const activeCurrentMessage = activeThread?.id === currentMessage?.threadId ? currentMessage : null;
+  const throttledCurrentMessage = useEinkThrottledValue(currentMessage);
+  useFullRefreshWhenStreamEnds(isStreaming);
+  const activeCurrentMessage =
+    activeThread?.id === throttledCurrentMessage?.threadId ? throttledCurrentMessage : null;
   const allMessages = useMemo(
     () => mergeMessagesWithStreaming(messagesV2, activeCurrentMessage, isStreaming),
     [activeCurrentMessage, isStreaming, messagesV2],

@@ -47,6 +47,7 @@
     "light": "Claro",
     "dark": "Oscuro",
     "sepia": "Sepia",
+    "eink": "Tinta electrónica",
     "autoSave": "Intervalo de autoguardado",
     "autoSaveDesc": "Con qué frecuencia guardar el progreso de lectura",
     "languageDesc": "Elige el idioma de la interfaz",

@@ -33,8 +33,8 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { File, Paths } from "expo-file-system";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ActivityIndicator } from "@/components/eink/EinkAware";
 import {
-  ActivityIndicator,
   Alert,
   FlatList,
   StyleSheet,

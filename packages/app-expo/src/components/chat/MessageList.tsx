@@ -1,5 +1,6 @@
 import { CheckIcon, ChevronDownIcon, CopyIcon } from "@/components/ui/Icon";
-import { fontSize as fs, radius, useColors, withOpacity } from "@/styles/theme";
+import { EINK_STREAM_INTERVAL_MS } from "@/lib/eink/use-eink-throttle";
+import { fontSize as fs, radius, useColors, useTheme, withOpacity } from "@/styles/theme";
 import type { ThemeColors } from "@/styles/theme";
 import type { CitationPart, MessageV2, QuotePart, TextPart } from "@readany/core/types/message";
 import * as Clipboard from "expo-clipboard";
@@ -9,10 +10,10 @@ import * as Clipboard from "expo-clipboard";
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Modal } from "@/components/eink/EinkAware";
 import {
   FlatList,
   Keyboard,
-  Modal,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
   Platform,
@@ -57,6 +58,7 @@ export function MessageList({
 }: MessageListProps) {
   const { t } = useTranslation();
   const colors = useColors();
+  const { isEink } = useTheme();
   const s = makeStyles(colors);
   const flatListRef = useRef<FlatList>(null);
   const isAtBottomRef = useRef(true);
@@ -68,21 +70,24 @@ export function MessageList({
   useEffect(() => {
     if (isAtBottomRef.current && flatListRef.current && messages.length > 0) {
       setTimeout(() => {
-        flatListRef.current?.scrollToEnd({ animated: true });
+        flatListRef.current?.scrollToEnd({ animated: !isEink });
       }, 100);
     }
-  }, [messages.length]);
+  }, [messages.length, isEink]);
 
-  // Periodic scroll during streaming
+  // Periodic scroll during streaming (e-ink: jump, at the throttled repaint pace)
   useEffect(() => {
     if (!isStreaming) return;
-    const interval = setInterval(() => {
-      if (isAtBottomRef.current) {
-        flatListRef.current?.scrollToEnd({ animated: true });
-      }
-    }, 300);
+    const interval = setInterval(
+      () => {
+        if (isAtBottomRef.current) {
+          flatListRef.current?.scrollToEnd({ animated: !isEink });
+        }
+      },
+      isEink ? EINK_STREAM_INTERVAL_MS : 300,
+    );
     return () => clearInterval(interval);
-  }, [isStreaming]);
+  }, [isStreaming, isEink]);
 
   // Force scroll to bottom when streaming ends
   useEffect(() => {

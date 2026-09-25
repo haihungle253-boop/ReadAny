@@ -40,11 +40,11 @@ import type { TFunction } from "i18next";
 import { Star } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Modal } from "@/components/eink/EinkAware";
 import {
   Alert,
   Image,
   type KeyboardTypeOptions,
-  Modal,
   Platform,
   Pressable,
   ScrollView,

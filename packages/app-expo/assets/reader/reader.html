@@ -192,6 +192,27 @@
     let currentSectionIndex = 0;
     let totalSections = 0;
     let currentThemeColors = { bg: '#1c1c1e', fg: '#e8e8ed', muted: '#7c7c82', primary: '#3b82f6' };
+    // E-ink mode: no transitions/animations anywhere (each frame is a panel refresh)
+    let currentEink = false;
+    const EINK_NO_MOTION_CSS = '*, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }';
+
+    function applyEinkToRenderer(renderer) {
+      if (!renderer) return;
+      if (currentEink) renderer.setAttribute('eink', '');
+      else renderer.removeAttribute('eink');
+    }
+
+    function applyEinkToShell() {
+      let style = document.getElementById('readany-eink-style');
+      if (currentEink && !style) {
+        style = document.createElement('style');
+        style.id = 'readany-eink-style';
+        style.textContent = EINK_NO_MOTION_CSS;
+        document.head.appendChild(style);
+      } else if (!currentEink && style) {
+        style.remove();
+      }
+    }
     let lastRendererStyles = '';
     let currentViewMode = 'paginated';
     let currentSectionUsesVerticalWriting = false;
@@ -1683,6 +1704,7 @@
         }
 
         const renderer = el.renderer;
+        applyEinkToRenderer(renderer);
         if (renderer && !el.isFixedLayout) {
           applyMobileReflowRendererSizing(renderer);
           // Default gap/margin
@@ -2046,6 +2068,9 @@
       const primary = colors.primary || '#3b82f6';
 
       currentThemeColors = { bg, fg, muted, primary };
+      currentEink = !!colors.eink;
+      applyEinkToShell();
+      if (view) applyEinkToRenderer(view.renderer);
 
       document.documentElement.style.setProperty('--bg', bg);
       document.documentElement.style.setProperty('--fg', fg);
@@ -2081,6 +2106,7 @@ p, div, span, blockquote, li, dd, dt, h1, h2, h3, h4, h5, h6, td, th, caption, f
 }
 a { color: ${primary} !important; }
 ::selection { background: rgba(59, 130, 246, 0.3) !important; }
+${currentEink ? EINK_NO_MOTION_CSS : ''}
 /* __end_theme_colors__ */`;
       return themeBlock + '\n' + cleaned;
     }

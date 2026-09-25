@@ -15,9 +15,8 @@ import {
 import { providerRequiresApiKey } from "@readany/core/utils";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ActivityIndicator, Modal } from "@/components/eink/EinkAware";
 import {
-  ActivityIndicator,
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,

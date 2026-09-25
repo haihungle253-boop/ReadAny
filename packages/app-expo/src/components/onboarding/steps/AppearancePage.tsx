@@ -2,7 +2,7 @@ import { DarkModeSvg } from "@/components/DarkModeSvg";
 import { type ThemeMode, useTheme } from "@/styles/ThemeContext";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import { Coffee, Moon, Sun } from "lucide-react-native";
+import { Coffee, Moon, Sun, Tablet } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
 import Animated, { SlideInRight } from "react-native-reanimated";
@@ -36,6 +36,11 @@ export function AppearancePage() {
       id: "sepia",
       name: t("settings.sepia", "Sepia"),
       icon: <Coffee size={24} color={colors.foreground} />,
+    },
+    {
+      id: "eink",
+      name: t("settings.eink", "E-ink"),
+      icon: <Tablet size={24} color={colors.foreground} />,
     },
   ];
 

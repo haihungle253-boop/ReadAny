@@ -47,6 +47,7 @@
     "light": "淺色",
     "dark": "深色",
     "sepia": "護眼",
+    "eink": "墨水屏",
     "autoSave": "自動儲存間隔",
     "autoSaveDesc": "閱讀進度儲存頻率",
     "languageDesc": "選擇介面顯示語言",

@@ -23,10 +23,10 @@ import { LinearGradient } from "expo-linear-gradient";
 import * as MediaLibrary from "expo-media-library";
 import * as Sharing from "expo-sharing";
 import AppIcon from "../../assets/icon.png";
+import { Modal } from "@/components/eink/EinkAware";
 import {
   Alert,
   Image,
-  Modal,
   Pressable,
   ScrollView,
   StyleSheet,

@@ -26,11 +26,11 @@ import { eventBus } from "@readany/core/utils/event-bus";
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Modal } from "@/components/eink/EinkAware";
 import {
   Alert,
   FlatList,
   Image,
-  Modal,
   Pressable,
   ScrollView,
   Text,

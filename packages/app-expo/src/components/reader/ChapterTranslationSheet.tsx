@@ -16,7 +16,8 @@ import { TRANSLATOR_LANGS } from "@readany/core/types/translation";
 import { type ThemeColors, fontSize, useColors } from "@/styles/theme";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, FlatList, Modal, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Modal } from "@/components/eink/EinkAware";
+import { FlatList, Pressable, StyleSheet, Text, View } from "react-native";
 
 interface ChapterTranslationSheetProps {
   visible: boolean;

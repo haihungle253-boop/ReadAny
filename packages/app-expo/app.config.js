@@ -1,6 +1,9 @@
 const { getAppVariantConfig } = require("./scripts/app-variant");
 
 const variant = getAppVariantConfig();
+const isEinkVariant = variant.key === "eink";
+// E-ink panels flash hard on large dark areas, so the e-ink build starts white.
+const brandBackground = isEinkVariant ? "#ffffff" : "#05042B";
 
 module.exports = {
   expo: {
@@ -14,7 +17,7 @@ module.exports = {
     splash: {
       image: "./assets/splash-icon.png",
       resizeMode: "contain",
-      backgroundColor: "#05042B",
+      backgroundColor: brandBackground,
     },
     ios: {
       supportsTablet: true,

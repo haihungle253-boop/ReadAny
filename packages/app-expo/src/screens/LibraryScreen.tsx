@@ -57,14 +57,13 @@ import { File as ExpoFile } from "expo-file-system";
  */
 import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ActivityIndicator, Modal } from "@/components/eink/EinkAware";
 import {
-  ActivityIndicator,
   Alert,
   Animated,
   FlatList,
   Image,
   Keyboard,
-  Modal,
   Platform,
   Pressable,
   ScrollView,

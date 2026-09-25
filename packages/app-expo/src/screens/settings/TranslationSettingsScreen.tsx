@@ -6,9 +6,9 @@ import {
   type TranslationTargetLang,
 } from "@readany/core/types/translation";
 import { useTranslation } from "react-i18next";
+import { Modal } from "@/components/eink/EinkAware";
 import {
   KeyboardAvoidingView,
-  Modal,
   Platform,
   ScrollView,
   StyleSheet,

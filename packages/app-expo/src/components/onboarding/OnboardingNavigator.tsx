@@ -22,14 +22,14 @@ export type OnboardingStackParamList = {
 const Stack = createNativeStackNavigator<OnboardingStackParamList>();
 
 export function OnboardingNavigator() {
-  const { colors } = useTheme();
+  const { colors, isEink } = useTheme();
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.background }}>
       <Stack.Navigator
         screenOptions={{
           headerShown: false,
-          animation: "slide_from_right",
+          animation: isEink ? "none" : "slide_from_right",
           contentStyle: { backgroundColor: "transparent" },
         }}
       >

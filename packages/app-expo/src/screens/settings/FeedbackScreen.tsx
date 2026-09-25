@@ -24,8 +24,8 @@ import type { LucideIcon } from "lucide-react-native";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import Constants from "expo-constants";
+import { ActivityIndicator } from "@/components/eink/EinkAware";
 import {
-  ActivityIndicator,
   Alert,
   FlatList,
   KeyboardAvoidingView,

@@ -47,6 +47,7 @@
     "light": "ライト",
     "dark": "ダーク",
     "sepia": "セピア",
+    "eink": "E Ink",
     "autoSave": "自動保存間隔",
     "autoSaveDesc": "読書進捗を保存する頻度",
     "languageDesc": "表示言語を選択",

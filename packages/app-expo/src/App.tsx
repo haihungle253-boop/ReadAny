@@ -28,9 +28,12 @@ import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { LogBox, Platform, Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { ReduceMotion, ReducedMotionConfig } from "react-native-reanimated";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { AnimatedSplash } from "@/components/splash/AnimatedSplash";
+import { isOnyxDevice } from "@/lib/eink/eink-state";
+import { installEinkAnimationPatch } from "@/lib/eink/patch-animations";
 import { rnSessionEventSource } from "@/hooks";
 import { setStreamingFetch } from "@readany/core/ai/llm-provider";
 import { initDatabase } from "@readany/core/db/database";
@@ -60,6 +63,7 @@ import { ThemeProvider, useTheme } from "@/styles/ThemeContext";
 import { useAutoSync } from "@readany/core/hooks/use-auto-sync";
 
 installFeedbackLogCapture();
+installEinkAnimationPatch();
 
 // iOS New-Arch + expo-dev-client cold-start: when dev-client swaps its boot
 // RCTInstance for the app's instance, RCTTurboModuleManager waits up to 10s for
@@ -233,7 +237,9 @@ export default function App() {
           flex: 1,
           justifyContent: "center",
           alignItems: "center",
-          backgroundColor: "#05042B",
+          // White on e-ink devices: a full-screen dark frame there means a
+          // heavy flashing refresh on every cold start.
+          backgroundColor: isOnyxDevice() ? "#ffffff" : "#05042B",
         }}
       >
         {/* Background matches animated splash so transition is seamless */}
@@ -245,14 +251,23 @@ export default function App() {
     <I18nextProvider i18n={i18n}>
       <ThemeProvider>
         <AppInner />
-        {!splashDone && <AnimatedSplash onFinish={handleSplashFinish} />}
+        {!splashDone && <SplashGate onFinish={handleSplashFinish} />}
       </ThemeProvider>
     </I18nextProvider>
   );
 }
 
+/** Skips the animated splash in e-ink mode. */
+function SplashGate({ onFinish }: { onFinish: () => void }) {
+  const { isEink } = useTheme();
+  useEffect(() => {
+    if (isEink) onFinish();
+  }, [isEink, onFinish]);
+  return isEink ? null : <AnimatedSplash onFinish={onFinish} />;
+}
+
 function AppInner() {
-  const { colors, isDark, mode } = useTheme();
+  const { colors, isDark, isEink, mode } = useTheme();
   const loadBooks = useLibraryStore((s) => s.loadBooks);
   useUpdateChecker();
   useAutoSync(loadBooks);
@@ -274,6 +289,7 @@ function AppInner() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.background }}>
+      {isEink && <ReducedMotionConfig mode={ReduceMotion.Always} />}
       <SafeAreaProvider>
         <NavigationContainer theme={navTheme} ref={navigationRef}>
           <StatusBar style={mode === "dark" ? "light" : "dark"} />

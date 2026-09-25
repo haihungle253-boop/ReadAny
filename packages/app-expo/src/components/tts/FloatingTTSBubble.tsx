@@ -10,8 +10,8 @@ import { useColors } from "@/styles/theme";
 import { TTSMiniPlayer } from "./TTSMiniPlayer";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ActivityIndicator } from "@/components/eink/EinkAware";
 import {
-  ActivityIndicator,
   Animated,
   Dimensions,
   Easing,

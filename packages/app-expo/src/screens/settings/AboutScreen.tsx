@@ -3,8 +3,8 @@ import { checkForUpdate } from "@readany/core/update";
 import { useResponsiveLayout } from "@/hooks/use-responsive-layout";
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ActivityIndicator } from "@/components/eink/EinkAware";
 import {
-  ActivityIndicator,
   Alert,
   Image,
   Linking,

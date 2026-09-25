@@ -47,6 +47,7 @@
     "light": "Light",
     "dark": "Dark",
     "sepia": "Sepia",
+    "eink": "E-ink",
     "autoSave": "Auto-save interval",
     "autoSaveDesc": "How often to save reading progress",
     "languageDesc": "Choose the display language",

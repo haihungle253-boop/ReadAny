@@ -22,10 +22,10 @@ import * as Clipboard from "expo-clipboard";
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Modal } from "@/components/eink/EinkAware";
 import {
   Dimensions,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   StyleSheet,
   Text,

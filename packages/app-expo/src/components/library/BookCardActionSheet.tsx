@@ -12,10 +12,10 @@ import { type ThemeColors, fontSize, fontWeight, radius, spacing, useColors } fr
 import type { Book } from "@readany/core/types";
 import { type ReactNode, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Modal } from "@/components/eink/EinkAware";
 import {
   Alert,
   type LayoutRectangle,
-  Modal,
   Pressable,
   StyleSheet,
   Text,

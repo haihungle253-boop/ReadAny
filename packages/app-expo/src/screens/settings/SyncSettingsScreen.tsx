@@ -9,8 +9,8 @@ import Constants from "expo-constants";
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ActivityIndicator } from "@/components/eink/EinkAware";
 import {
-  ActivityIndicator,
   Alert,
   Animated,
   KeyboardAvoidingView,

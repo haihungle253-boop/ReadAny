@@ -47,6 +47,7 @@
     "light": "Clair",
     "dark": "Sombre",
     "sepia": "Sépia",
+    "eink": "Encre électronique",
     "autoSave": "Intervalle de sauvegarde auto",
     "autoSaveDesc": "Fréquence de sauvegarde de la progression de lecture",
     "languageDesc": "Choisissez la langue d'affichage",

@@ -18,8 +18,8 @@ import {
 import { radius, useColors } from "@/styles/theme";
 import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Modal } from "@/components/eink/EinkAware";
 import {
-  Modal,
   ScrollView,
   StyleSheet,
   Text,

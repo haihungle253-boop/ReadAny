@@ -5,10 +5,10 @@ import Constants from "expo-constants";
 import { Scan } from "lucide-react-native";
 import { useCallback, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Modal } from "@/components/eink/EinkAware";
 import {
   Alert,
   Animated,
-  Modal,
   StyleSheet,
   Text,
   TextInput,

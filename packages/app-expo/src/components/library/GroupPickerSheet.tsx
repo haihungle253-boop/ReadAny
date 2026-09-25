@@ -3,9 +3,9 @@ import { type ThemeColors, fontSize, fontWeight, radius, spacing, useColors } fr
 import type { BookGroup } from "@readany/core/types";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { Modal } from "@/components/eink/EinkAware";
 import {
   KeyboardAvoidingView,
-  Modal,
   Platform,
   Pressable,
   StyleSheet,
