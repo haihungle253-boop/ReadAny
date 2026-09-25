@@ -44,10 +44,12 @@ import {
 import * as Clipboard from "expo-clipboard";
 import { Alert } from "react-native";
 
+import { ChatFontSizeButton } from "@/components/chat/ChatFontSizeButton";
 import { ChatInput } from "@/components/chat/ChatInput";
 import { ContextPopover } from "@/components/chat/ContextPopover";
 import { MessageList } from "@/components/chat/MessageList";
 import { ModelSelector } from "@/components/chat/ModelSelector";
+import { ChatTextScale } from "@/lib/chat-font/text-scale";
 import {
   BookOpenIcon,
   CopyIcon,
@@ -393,70 +395,74 @@ export function ChatScreen() {
 
         <View style={s.mainColumn}>
           {/* Header — compact, matching mobile */}
-          <View style={s.header}>
-            <View style={s.headerLeft}>
-              {!isTabletLandscape && (
-                <TouchableOpacity style={s.iconBtn} onPress={openSidebar} activeOpacity={0.7}>
-                  <HistoryIcon size={16} color={colors.foreground} />
-                </TouchableOpacity>
-              )}
-            </View>
-            <View style={s.headerRight}>
-              <ModelSelector onNavigateToSettings={() => navigation.navigate("AISettings")} />
-              <ContextPopover />
-              {allMessages.length > 0 && (
-                <>
-                  <TouchableOpacity
-                    style={s.iconBtn}
-                    onPress={() => setShowExportMenu(true)}
-                    activeOpacity={0.7}
-                  >
-                    <ShareIcon size={16} color={colors.foreground} />
+          {/* Header chrome grows with chat text, capped so it keeps its layout */}
+          <ChatTextScale maxScale={1.5}>
+            <View style={s.header}>
+              <View style={s.headerLeft}>
+                {!isTabletLandscape && (
+                  <TouchableOpacity style={s.iconBtn} onPress={openSidebar} activeOpacity={0.7}>
+                    <HistoryIcon size={16} color={colors.foreground} />
                   </TouchableOpacity>
-                  <Modal
-                    visible={showExportMenu}
-                    transparent
-                    animationType="fade"
-                    onRequestClose={() => setShowExportMenu(false)}
-                  >
-                    <Pressable style={s.exportOverlay} onPress={() => setShowExportMenu(false)}>
-                      <View style={s.exportMenu}>
-                        <TouchableOpacity
-                          style={s.exportMenuItem}
-                          activeOpacity={0.85}
-                          onPress={handleExportMarkdown}
-                        >
-                          <ScrollTextIcon size={18} color={colors.foreground} />
-                          <Text style={s.exportMenuText}>
-                            {t("chat.exportMarkdown", "导出 Markdown")}
-                          </Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={[s.exportMenuItem, s.exportMenuItemDivider]}
-                          activeOpacity={0.85}
-                          onPress={handleExportJSON}
-                        >
-                          <Download size={18} color={colors.foreground} />
-                          <Text style={s.exportMenuText}>{t("chat.exportJSON", "导出 JSON")}</Text>
-                        </TouchableOpacity>
-                        <TouchableOpacity
-                          style={s.exportMenuItem}
-                          activeOpacity={0.85}
-                          onPress={handleCopyAll}
-                        >
-                          <CopyIcon size={18} color={colors.foreground} />
-                          <Text style={s.exportMenuText}>{t("chat.copyAll", "复制全部")}</Text>
-                        </TouchableOpacity>
-                      </View>
-                    </Pressable>
-                  </Modal>
-                </>
-              )}
-              <TouchableOpacity style={s.iconBtn} onPress={handleNewThread} activeOpacity={0.7}>
-                <MessageCirclePlusIcon size={16} color={colors.foreground} />
-              </TouchableOpacity>
+                )}
+              </View>
+              <View style={s.headerRight}>
+                <ModelSelector onNavigateToSettings={() => navigation.navigate("AISettings")} />
+                <ChatFontSizeButton />
+                <ContextPopover />
+                {allMessages.length > 0 && (
+                  <>
+                    <TouchableOpacity
+                      style={s.iconBtn}
+                      onPress={() => setShowExportMenu(true)}
+                      activeOpacity={0.7}
+                    >
+                      <ShareIcon size={16} color={colors.foreground} />
+                    </TouchableOpacity>
+                    <Modal
+                      visible={showExportMenu}
+                      transparent
+                      animationType="fade"
+                      onRequestClose={() => setShowExportMenu(false)}
+                    >
+                      <Pressable style={s.exportOverlay} onPress={() => setShowExportMenu(false)}>
+                        <View style={s.exportMenu}>
+                          <TouchableOpacity
+                            style={s.exportMenuItem}
+                            activeOpacity={0.85}
+                            onPress={handleExportMarkdown}
+                          >
+                            <ScrollTextIcon size={18} color={colors.foreground} />
+                            <Text style={s.exportMenuText}>
+                              {t("chat.exportMarkdown", "导出 Markdown")}
+                            </Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[s.exportMenuItem, s.exportMenuItemDivider]}
+                            activeOpacity={0.85}
+                            onPress={handleExportJSON}
+                          >
+                            <Download size={18} color={colors.foreground} />
+                            <Text style={s.exportMenuText}>{t("chat.exportJSON", "导出 JSON")}</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={s.exportMenuItem}
+                            activeOpacity={0.85}
+                            onPress={handleCopyAll}
+                          >
+                            <CopyIcon size={18} color={colors.foreground} />
+                            <Text style={s.exportMenuText}>{t("chat.copyAll", "复制全部")}</Text>
+                          </TouchableOpacity>
+                        </View>
+                      </Pressable>
+                    </Modal>
+                  </>
+                )}
+                <TouchableOpacity style={s.iconBtn} onPress={handleNewThread} activeOpacity={0.7}>
+                  <MessageCirclePlusIcon size={16} color={colors.foreground} />
+                </TouchableOpacity>
+              </View>
             </View>
-          </View>
+          </ChatTextScale>
 
           {/* Content */}
           <View style={s.content}>

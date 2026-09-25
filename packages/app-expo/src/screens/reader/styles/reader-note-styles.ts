@@ -98,18 +98,18 @@ export const makeNoteStyles = (colors: ThemeColors) =>
     noteViewSaveText: { fontSize: fontSize.sm, fontWeight: fontWeight.medium, color: colors.primaryForeground },
 
     // ── Note tooltip ──────────────────────────────────────────────────────────
+    // Follows the theme (was a fixed dark card with light text, which renders
+    // as an unreadable black box on e-ink). Width/height are set inline.
     noteTooltip: {
       position: "absolute",
-      width: 300, maxHeight: 200,
-      backgroundColor: "rgba(15, 23, 42, 0.95)",
+      backgroundColor: colors.card,
       borderRadius: radius.lg,
       padding: 12,
       shadowColor: "#000",
-      shadowOffset: { width: 0, height: 8 },
-      shadowOpacity: 0.3, shadowRadius: 16,
-      elevation: 12,
-      borderWidth: 1, borderColor: "rgba(100, 116, 139, 0.3)",
+      shadowOffset: { width: 0, height: 4 },
+      shadowOpacity: 0.12, shadowRadius: 12,
+      elevation: 8,
+      borderWidth: 1, borderColor: colors.border,
       zIndex: 90,
     },
-    noteTooltipContent: { maxHeight: 140, overflow: "hidden" },
   });

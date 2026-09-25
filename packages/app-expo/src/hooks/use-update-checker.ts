@@ -1,3 +1,4 @@
+import Constants from "expo-constants";
 import { useEffect } from "react";
 import { Platform } from "react-native";
 import { getPlatformService } from "@readany/core/services";
@@ -15,6 +16,8 @@ export function useUpdateChecker() {
 
   useEffect(() => {
     if (Platform.OS !== "android") return;
+    // Upstream releases are a different app (package); don't offer them here.
+    if (Constants.expoConfig?.extra?.appVariant === "eink") return;
 
     let cancelled = false;
 

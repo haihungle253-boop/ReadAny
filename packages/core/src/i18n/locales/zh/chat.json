@@ -29,6 +29,8 @@
       "analyzeAuthor": "分析作者的论点"
     },
     "aiAssistant": "AI 阅读助手",
+    "fontSize": "对话字号",
+    "fontSizeHint": "对话和笔记浮窗共用这个字号，书籍正文字号在阅读设置里调。",
     "aiAssistantDesc": "分析内容、回答问题，帮助你更好地理解书籍。",
     "deepThinking": "深度思考",
     "deepThinkingHint": "启用更深入的分析和推理过程，响应时间可能更长",

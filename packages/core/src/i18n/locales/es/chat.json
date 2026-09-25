@@ -28,6 +28,8 @@
       "analyzeAuthor": "Analizar el argumento del autor"
     },
     "aiAssistant": "Asistente de lectura IA",
+    "fontSize": "Tamaño del texto del chat",
+    "fontSizeHint": "Se usa en el chat y en las notas emergentes. El tamaño del texto del libro se ajusta en la configuración del lector.",
     "aiAssistantDesc": "Analiza contenido, responde preguntas y te ayuda a entender mejor tus libros.",
     "deepThinking": "Pensamiento profundo",
     "deepThinkingHint": "Habilita un análisis y razonamiento más profundo, el tiempo de respuesta puede ser mayor",

@@ -2,6 +2,7 @@ import { OnboardingNavigator } from "@/components/onboarding/OnboardingNavigator
 import { MissingBookPrompt } from "@/components/shared/MissingBookPrompt";
 import BadgesScreen from "@/screens/BadgesScreen";
 import { BookChatScreen } from "@/screens/BookChatScreen";
+import { withChatTextScale } from "@/lib/chat-font/text-scale";
 import { BookDetailsScreen } from "@/screens/BookDetailsScreen";
 import { FullScreenNotesScreen } from "@/screens/FullScreenNotesScreen";
 import { ReaderScreen } from "@/screens/ReaderScreen";
@@ -25,6 +26,9 @@ import { useSettingsStore } from "@/stores";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import type { WebDavImportSource } from "@readany/core";
 import { TabNavigator } from "./TabNavigator";
+
+// All chat text follows the chat font size (header button "Aa").
+const ScaledBookChatScreen = withChatTextScale(BookChatScreen);
 
 export type RootStackParamList = {
   Onboarding: undefined;
@@ -78,7 +82,7 @@ export function RootNavigator() {
             />
             <Stack.Screen
               name="BookChat"
-              component={BookChatScreen}
+              component={ScaledBookChatScreen}
               options={{ animation: "slide_from_right" }}
             />
             <Stack.Screen

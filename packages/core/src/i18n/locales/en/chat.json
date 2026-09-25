@@ -29,6 +29,8 @@
       "analyzeAuthor": "Analyze the author's argument"
     },
     "aiAssistant": "AI Reading Assistant",
+    "fontSize": "Chat text size",
+    "fontSizeHint": "Chat and note pop-ups share this size. Book text size is set in the reader settings.",
     "aiAssistantDesc": "Analyze content, answer questions, and help you understand your books better.",
     "deepThinking": "Deep Thinking",
     "deepThinkingHint": "Enable deeper analysis and reasoning, response time may be longer",

@@ -1,6 +1,7 @@
 import { BookOpenIcon, MessageSquareIcon, NotebookPenIcon, UserIcon } from "@/components/ui/Icon";
 import { useResponsiveLayout } from "@/hooks/use-responsive-layout";
 import { ChatScreen } from "@/screens/ChatScreen";
+import { withChatTextScale } from "@/lib/chat-font/text-scale";
 import { LibraryScreen } from "@/screens/LibraryScreen";
 import { NotesScreen } from "@/screens/NotesScreen";
 import { ProfileScreen } from "@/screens/ProfileScreen";
@@ -13,6 +14,9 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { useTranslation } from "react-i18next";
 import { Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+// All chat text follows the chat font size (header button "Aa").
+const ScaledChatScreen = withChatTextScale(ChatScreen);
 
 export type TabParamList = {
   Library: undefined;
@@ -78,7 +82,7 @@ export function TabNavigator() {
       />
       <Tab.Screen
         name="Chat"
-        component={ChatScreen}
+        component={ScaledChatScreen}
         options={{
           tabBarLabel: t("tabs.ai", "AI"),
           tabBarIcon: ({ color, size }) => <MessageSquareIcon color={color} size={size} />,
