@@ -3,7 +3,12 @@ import { InferenceSession, Tensor } from "onnxruntime-react-native";
 import type { ILocalEmbeddingEngine } from "@readany/core/ai/local-embedding-service";
 
 const MAX_TOKENS = 128;
-const DOWNLOAD_TIMEOUT_MS = 30_000;
+// Abort only when no bytes arrive for this long. (A 30s cap on the whole
+// download failed healthy-but-slow connections, e.g. via a VPN, on a 24MB model.)
+const DOWNLOAD_STALL_TIMEOUT_MS = 30_000;
+// Tried in order; hf-mirror.com serves the same files and is reachable from
+// mainland China without a VPN.
+const MODEL_HOSTS = ["https://huggingface.co", "https://hf-mirror.com"];
 
 type PoolingStrategy = "cls" | "mean";
 type MobileModel = { hfModelId: string; pooling: PoolingStrategy };
@@ -46,9 +51,9 @@ export class NativeOnnxEmbeddingEngine implements ILocalEmbeddingEngine {
       await FileSystem.deleteAsync(directory, { idempotent: true });
       await FileSystem.makeDirectoryAsync(directory, { intermediates: true });
     }
-    const modelBase = `https://huggingface.co/${model.hfModelId}/resolve/main`;
-    await this.download(`${modelBase}/onnx/model_quantized.onnx`, modelPath, 0, 88, onProgress);
-    await this.download(`${modelBase}/tokenizer.json`, tokenizerPath, 88, 100, onProgress);
+    const modelPathInRepo = `${model.hfModelId}/resolve/main`;
+    await this.downloadFromHosts(`${modelPathInRepo}/onnx/model_quantized.onnx`, modelPath, 0, 88, onProgress);
+    await this.downloadFromHosts(`${modelPathInRepo}/tokenizer.json`, tokenizerPath, 88, 100, onProgress);
     const tokenizer = JSON.parse(await FileSystem.readAsStringAsync(tokenizerPath)) as TokenizerFile;
     if (!tokenizer.model?.vocab) throw new Error("Downloaded tokenizer is missing its vocabulary.");
     this.vocab = tokenizer.model.vocab;
@@ -97,28 +102,47 @@ export class NativeOnnxEmbeddingEngine implements ILocalEmbeddingEngine {
     if (modelId) await FileSystem.deleteAsync(`${FileSystem.documentDirectory}readany-models/${modelId}`, { idempotent: true });
   }
 
+  private async downloadFromHosts(path: string, target: string, start: number, end: number, progress?: (p: number) => void) {
+    let lastError: unknown;
+    for (const host of MODEL_HOSTS) {
+      try {
+        await this.download(`${host}/${path}`, target, start, end, progress);
+        return;
+      } catch (error) {
+        lastError = error;
+      }
+    }
+    throw lastError;
+  }
+
   private async download(url: string, target: string, start: number, end: number, progress?: (p: number) => void) {
     if ((await FileSystem.getInfoAsync(target)).exists) { progress?.(end); return; }
+    let stalled = false;
+    let stallTimer: ReturnType<typeof setTimeout> | undefined;
+    let rejectStall: (error: Error) => void = () => {};
+    const stall = new Promise<never>((_, reject) => { rejectStall = reject; });
+    const armStallTimer = () => {
+      clearTimeout(stallTimer);
+      stallTimer = setTimeout(() => {
+        stalled = true;
+        rejectStall(new Error("无法连接模型下载服务器。请检查手机网络或开启可访问 Hugging Face 的 VPN 后重试。"));
+      }, DOWNLOAD_STALL_TIMEOUT_MS);
+    };
     const job = FileSystem.createDownloadResumable(url, target, {}, ({ totalBytesWritten, totalBytesExpectedToWrite }) => {
+      armStallTimer();
       if (totalBytesExpectedToWrite > 0) progress?.(Math.round(start + ((end - start) * totalBytesWritten) / totalBytesExpectedToWrite));
     });
-    let timedOut = false;
-    let timeoutId: ReturnType<typeof setTimeout>;
-    const timeout = new Promise<never>((_, reject) => {
-      timeoutId = setTimeout(() => {
-        timedOut = true;
-        reject(new Error("无法连接模型下载服务器。请检查手机网络或开启可访问 Hugging Face 的 VPN 后重试。"));
-      }, DOWNLOAD_TIMEOUT_MS);
-    });
+    armStallTimer();
     try {
-      const result = await Promise.race([job.downloadAsync(), timeout]);
+      const result = await Promise.race([job.downloadAsync(), stall]);
       if (!result) throw new Error("Model download was cancelled.");
+      if (result.status >= 400) throw new Error(`Model download failed (HTTP ${result.status}).`);
     } catch (error) {
-      if (timedOut) await job.pauseAsync().catch(() => undefined);
+      if (stalled) await job.pauseAsync().catch(() => undefined);
       await FileSystem.deleteAsync(target, { idempotent: true });
       throw error;
     } finally {
-      clearTimeout(timeoutId!);
+      clearTimeout(stallTimer);
     }
   }
 }
