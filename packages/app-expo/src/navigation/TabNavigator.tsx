@@ -4,6 +4,7 @@ import { ChatScreen } from "@/screens/ChatScreen";
 import { LibraryScreen } from "@/screens/LibraryScreen";
 import { NotesScreen } from "@/screens/NotesScreen";
 import { ProfileScreen } from "@/screens/ProfileScreen";
+import { useUiFontScale } from "@/lib/ui-scale/ui-font-scale";
 import { useTheme } from "@/styles/ThemeContext";
 /**
  * TabNavigator — bottom tab bar matching the Tauri mobile app's 4 tabs.
@@ -39,7 +40,11 @@ export function TabNavigator() {
     Platform.OS === "android" ? Math.max(insets.bottom, androidNavigationFallback) : insets.bottom;
 
   const baseTabBarHeight = layout.isTabletLandscape ? 72 : layout.isTablet ? 76 : 60;
-  const tabBarHeight = baseTabBarHeight + bottomInset;
+  const tabLabelSize = layout.isTablet ? 13 : 12;
+  // Labels grow with the interface text size; make room so they don't clip.
+  const uiFontScale = useUiFontScale();
+  const labelGrowth = Math.ceil((uiFontScale - 1) * tabLabelSize * 1.4);
+  const tabBarHeight = baseTabBarHeight + labelGrowth + bottomInset;
 
   return (
     <Tab.Navigator
@@ -50,7 +55,7 @@ export function TabNavigator() {
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.mutedForeground,
         tabBarLabelStyle: {
-          fontSize: layout.isTablet ? 13 : 12,
+          fontSize: tabLabelSize,
           fontWeight: "500",
           marginBottom: layout.isTabletLandscape ? 2 : 0,
         },

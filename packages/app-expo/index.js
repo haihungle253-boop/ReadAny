@@ -2,6 +2,9 @@
 import "react-native-get-random-values";
 import * as ExpoCrypto from "expo-crypto";
 
+// UI text scaling must patch react-native's Text before any screen module loads
+import "./src/lib/ui-scale/install-text-scale";
+
 import { registerRootComponent } from "expo";
 import TrackPlayer from "react-native-track-player";
 import App from "./src/App";

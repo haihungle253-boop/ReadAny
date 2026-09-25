@@ -146,7 +146,7 @@ export function TTSSleepTimerSheet({ visible, onClose }: TTSSleepTimerSheetProps
         },
         input: {
           flex: 1,
-          height: 48,
+          minHeight: 48,
           borderRadius: radius.xl,
           borderWidth: 1,
           borderColor: withOpacity(colors.border, 0.9),

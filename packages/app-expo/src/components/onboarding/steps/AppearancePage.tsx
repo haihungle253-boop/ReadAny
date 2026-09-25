@@ -1,4 +1,5 @@
 import { DarkModeSvg } from "@/components/DarkModeSvg";
+import { UiFontScalePicker } from "@/components/settings/UiFontScalePicker";
 import { type ThemeMode, useTheme } from "@/styles/ThemeContext";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -113,6 +114,15 @@ export function AppearancePage() {
                   );
                 })}
               </View>
+            </View>
+
+            <View
+              style={[styles.card, { backgroundColor: colors.card, borderColor: colors.border }]}
+            >
+              <Text style={[styles.cardTitle, { color: colors.mutedForeground }]}>
+                {t("settings.uiFontScale", "Interface text size")}
+              </Text>
+              <UiFontScalePicker />
             </View>
 
             <View

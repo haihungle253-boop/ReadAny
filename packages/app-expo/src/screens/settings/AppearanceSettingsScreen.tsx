@@ -6,6 +6,7 @@ import {
   SunIcon,
   TabletIcon,
 } from "@/components/ui/Icon";
+import { UiFontScalePicker } from "@/components/settings/UiFontScalePicker";
 import { useResponsiveLayout } from "@/hooks/use-responsive-layout";
 import { useTheme } from "@/styles/ThemeContext";
 import type { ThemeMode } from "@/styles/ThemeContext";
@@ -117,6 +118,14 @@ export default function AppearanceSettingsScreen() {
                 );
               })}
             </View>
+          </View>
+
+          {/* Interface text size — menus, buttons, AI chat (not book text) */}
+          <View style={s.section}>
+            <Text style={[s.sectionTitle, { color: colors.mutedForeground }]}>
+              {t("settings.uiFontScale", "界面字号")}
+            </Text>
+            <UiFontScalePicker />
           </View>
 
           {/* Language — single row, tap to open bottom sheet */}

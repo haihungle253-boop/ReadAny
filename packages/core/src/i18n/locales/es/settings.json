@@ -48,6 +48,8 @@
     "dark": "Oscuro",
     "sepia": "Sepia",
     "eink": "Tinta electrónica",
+    "uiFontScale": "Tamaño del texto de la interfaz",
+    "uiFontScalePreview": "Menús, botones y chat de IA usan este tamaño. El texto del libro se ajusta en el lector.",
     "autoSave": "Intervalo de autoguardado",
     "autoSaveDesc": "Con qué frecuencia guardar el progreso de lectura",
     "languageDesc": "Elige el idioma de la interfaz",

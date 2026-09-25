@@ -48,6 +48,8 @@
     "dark": "ダーク",
     "sepia": "セピア",
     "eink": "E Ink",
+    "uiFontScale": "インターフェースの文字サイズ",
+    "uiFontScalePreview": "メニュー、ボタン、AI チャットに適用されます。本文の文字サイズはリーダーで別に設定します。",
     "autoSave": "自動保存間隔",
     "autoSaveDesc": "読書進捗を保存する頻度",
     "languageDesc": "表示言語を選択",

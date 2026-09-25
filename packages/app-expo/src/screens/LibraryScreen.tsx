@@ -1404,7 +1404,7 @@ const makeStyles = (
       marginBottom: 12,
     },
     groupModalInput: {
-      height: 42,
+      minHeight: 42,
       borderRadius: radius.lg,
       borderWidth: 1,
       borderColor: colors.border,

@@ -48,6 +48,8 @@
     "dark": "다크",
     "sepia": "세피아",
     "eink": "전자잉크",
+    "uiFontScale": "인터페이스 글자 크기",
+    "uiFontScalePreview": "메뉴, 버튼, AI 채팅에 적용됩니다. 책 본문 글자 크기는 리더에서 따로 설정합니다.",
     "autoSave": "자동 저장 간격",
     "autoSaveDesc": "읽기 진행률 저장 빈도",
     "languageDesc": "표시 언어를 선택하세요",

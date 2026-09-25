@@ -142,7 +142,7 @@ export function WebDavConnectSheet({
           color: colors.foreground,
         },
         input: {
-          height: 48,
+          minHeight: 48,
           borderRadius: radius.xl,
           borderWidth: 1,
           borderColor: withOpacity(colors.border, 0.92),

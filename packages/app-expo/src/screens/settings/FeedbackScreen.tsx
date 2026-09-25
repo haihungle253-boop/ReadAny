@@ -494,7 +494,7 @@ const styles = StyleSheet.create({
   },
   typeBtnText: { fontSize: 13, fontWeight: "500" },
   input: {
-    height: 40,
+    minHeight: 40,
     borderWidth: 1,
     borderRadius: 8,
     paddingHorizontal: 12,

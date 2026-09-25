@@ -48,6 +48,8 @@
     "dark": "深色",
     "sepia": "護眼",
     "eink": "墨水屏",
+    "uiFontScale": "介面字號",
+    "uiFontScalePreview": "選單、按鈕和 AI 對話都使用這個字號。書籍正文的字號在閱讀器裡單獨調整。",
     "autoSave": "自動儲存間隔",
     "autoSaveDesc": "閱讀進度儲存頻率",
     "languageDesc": "選擇介面顯示語言",

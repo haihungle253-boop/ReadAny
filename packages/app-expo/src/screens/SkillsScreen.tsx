@@ -492,7 +492,7 @@ const makeStyles = (colors: ThemeColors) =>
       marginTop: 12,
     },
     fieldInput: {
-      height: 36,
+      minHeight: 36,
       backgroundColor: colors.muted,
       borderRadius: radius.lg,
       paddingHorizontal: 12,
