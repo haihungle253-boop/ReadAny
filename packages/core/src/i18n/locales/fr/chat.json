@@ -28,6 +28,8 @@
       "analyzeAuthor": "Analyser l'argumentation de l'auteur"
     },
     "aiAssistant": "Assistant de lecture IA",
+    "fontSize": "Taille du texte du chat",
+    "fontSizeHint": "Utilisée par le chat et les bulles de notes. La taille du texte du livre se règle dans les paramètres du lecteur.",
     "aiAssistantDesc": "Analysez le contenu, répondez aux questions et comprenez mieux vos livres.",
     "deepThinking": "Réflexion approfondie",
     "deepThinkingHint": "Active une analyse et un raisonnement plus poussés, le temps de réponse peut être plus long",

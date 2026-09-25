@@ -5,8 +5,8 @@ import type { ThemeColors } from "@/styles/theme";
 import { useChatReaderStore } from "@readany/core/stores";
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Modal } from "@/components/eink/EinkAware";
 import {
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,

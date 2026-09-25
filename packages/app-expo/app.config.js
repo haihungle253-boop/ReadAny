@@ -1,15 +1,12 @@
 const { getAppVariantConfig } = require("./scripts/app-variant");
 
 const variant = getAppVariantConfig();
-const isEinkVariant = variant.key === "eink";
-// E-ink panels flash hard on large dark areas, so the e-ink build starts white.
-const brandBackground = isEinkVariant ? "#ffffff" : "#05042B";
 
 module.exports = {
   expo: {
     name: variant.name,
     slug: "readany",
-    version: "1.3.5",
+    version: "1.3.6",
     orientation: "portrait",
     icon: "./assets/icon.png",
     userInterfaceStyle: "automatic",
@@ -17,7 +14,7 @@ module.exports = {
     splash: {
       image: "./assets/splash-icon.png",
       resizeMode: "contain",
-      backgroundColor: brandBackground,
+      backgroundColor: "#05042B",
     },
     ios: {
       supportsTablet: true,
@@ -70,6 +67,7 @@ module.exports = {
           },
         },
       ],
+      "./plugins/withGradleMemory",
       "expo-font",
       [
         "expo-image-picker",
@@ -80,6 +78,8 @@ module.exports = {
       "expo-secure-store",
       "expo-sqlite",
       "expo-asset",
+      "./plugins/withOnnxruntimePackage",
+      "onnxruntime-react-native",
       "./plugins/withVolumeKeyPaging",
       [
         "expo-camera",

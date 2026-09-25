@@ -1,3 +1,4 @@
+import { KeyboardAwareScrollView } from "@/components/ui/KeyboardAwareScrollView";
 import { useResponsiveLayout } from "@/hooks/use-responsive-layout";
 import { getPlatformService } from "@readany/core/services";
 import { useSyncStore } from "@readany/core/stores";
@@ -9,13 +10,11 @@ import Constants from "expo-constants";
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator } from "@/components/eink/EinkAware";
 import {
+  ActivityIndicator,
   Alert,
   Animated,
-  KeyboardAvoidingView,
   Platform,
-  ScrollView,
   Text,
   TextInput,
   TouchableOpacity,
@@ -459,16 +458,10 @@ export default function SyncSettingsScreen() {
     >
       <SettingsHeader title={t("settings.syncTitle")} />
 
-      <KeyboardAvoidingView
-        style={styles.keyboardView}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      <KeyboardAwareScrollView
+        style={styles.scroll}
+        contentContainerStyle={[styles.scrollContent, { alignItems: "center" }]}
       >
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={[styles.scrollContent, { alignItems: "center" }]}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
-        >
           <View
             style={[styles.contentColumn, { width: "100%", maxWidth: layout.centeredContentWidth }]}
           >
@@ -811,8 +804,7 @@ export default function SyncSettingsScreen() {
               />
             </View>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }

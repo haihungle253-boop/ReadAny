@@ -16,8 +16,8 @@ import type {
 } from "@readany/core/types/message";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator } from "@/components/eink/EinkAware";
 import {
+  ActivityIndicator,
   ScrollView,
   StyleSheet,
   Text,

@@ -50,6 +50,7 @@ export interface ReaderInitialSettings {
   paragraphSpacing?: number;
   pageMargin?: number;
   fontTheme?: string;
+  useBookFonts?: boolean;
   viewMode?: "paginated" | "scroll";
   paginatedLayout?: "single" | "double";
 }
@@ -266,6 +267,7 @@ export function useReaderBridge(callbacks: ReaderBridgeCallbacks) {
       paragraphSpacing?: number;
       pageMargin?: number;
       fontTheme?: string;
+      useBookFonts?: boolean;
       viewMode?: string;
       paginatedLayout?: "single" | "double";
       customFontFaceCSS?: string;
@@ -283,9 +285,9 @@ export function useReaderBridge(callbacks: ReaderBridgeCallbacks) {
       foreground: string;
       muted: string;
       primary?: string;
-      eink?: boolean;
+      themeMode?: "light" | "dark" | "sepia";
     }) => {
-      const msg = JSON.stringify({ type: "setThemeColors", colors });
+      const msg = JSON.stringify({ type: "setThemeColors", colors, themeMode: colors.themeMode });
       inject(`handleCommand(${msg})`);
     },
     [inject],

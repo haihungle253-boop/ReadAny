@@ -53,6 +53,71 @@ function getThemeColors(theme: AppTheme) {
   return THEME_COLORS[theme];
 }
 
+/** Per-theme CSS filter applied to PDF pages (fixed layout) in dark/sepia mode. */
+const PDF_THEME_FILTERS: Partial<Record<AppTheme, string>> = {
+  dark: "invert(0.93)",
+  // Numerically tuned (invert->sepia->contrast->brightness) so a white PDF page
+  // maps almost exactly to the sepia background #f0e6d2 (rgb 240,230,210);
+  // text lands on a readable warm dark brown.
+  sepia: "invert(0.245) sepia(0.286) contrast(1.328) brightness(1.005)",
+};
+
+/**
+ * Decide whether a PDF page is a "light text page" that should be theme-filtered
+ * (inverted / sepia-tinted) in dark/sepia mode. Photo-heavy or already-dark
+ * pages are left untouched so images don't turn into negatives.
+ */
+function analyzeCanvasIsLight(canvas: HTMLCanvasElement): boolean {
+  const size = 48;
+  const out = document.createElement("canvas");
+  out.width = size;
+  out.height = size;
+  const ctx = out.getContext("2d", { willReadFrequently: true });
+  if (!ctx) return true;
+  try {
+    ctx.drawImage(canvas, 0, 0, size, size);
+    const data = ctx.getImageData(0, 0, size, size).data;
+    let light = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      const lum = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+      if (lum > 200) light++;
+    }
+    // A text page is predominantly light; downsampling washes thin text into
+    // gray, so only rely on how much of the page is clearly light.
+    return light / (size * size) > 0.55;
+  } catch {
+    return true;
+  }
+}
+
+/** The PDF page canvas is rendered asynchronously (pdf.js); wait until it appears. */
+function waitForPdfPageCanvas(
+  doc: Document,
+  timeoutMs = 5000,
+): Promise<HTMLCanvasElement | null> {
+  return new Promise((resolve) => {
+    const win = doc.defaultView ?? window;
+    const raf =
+      typeof win.requestAnimationFrame === "function"
+        ? win.requestAnimationFrame.bind(win)
+        : (cb: FrameRequestCallback) => window.setTimeout(() => cb(performance.now()), 50);
+    const start = performance.now();
+    const check = () => {
+      const canvas = doc.querySelector<HTMLCanvasElement>("#canvas canvas");
+      if (canvas && canvas.width > 0 && canvas.height > 0) {
+        resolve(canvas);
+        return;
+      }
+      if (performance.now() - start > timeoutMs) {
+        resolve(null);
+        return;
+      }
+      raf(check);
+    };
+    check();
+  });
+}
+
 function getActiveContentDocument(view: FoliateView | null): Document | null {
   const contents = view?.renderer?.getContents?.();
   return (contents?.[0]?.doc as Document | undefined) ?? null;
@@ -119,6 +184,9 @@ function getRangeTextWithoutRuby(range: Range, fallback = ""): string {
     const fragment = range.cloneContents();
     for (const node of fragment.querySelectorAll("rt, rp")) {
       node.remove();
+    }
+    for (const node of fragment.querySelectorAll("br")) {
+      node.replaceWith(fragment.ownerDocument.createTextNode("\n"));
     }
     const text = fragment.textContent?.trim();
     if (text) return text;
@@ -446,6 +514,24 @@ function getElementPreviewText(element: Element | Range | null): string {
   return cleanText(cloned.textContent || "").slice(0, 600);
 }
 
+/**
+ * Resolve the element whose text should preview a footnote. Well-formed books
+ * put the footnote id on a block container (<aside>), but many real-world
+ * books put it on the inline marker itself ("[2]" / "(1)") whose parent block
+ * carries the actual note. Walk up while a node's own (marker-stripped) text
+ * is empty and return the first ancestor that yields note text - no tag-name
+ * or length heuristics, independent of markup style.
+ */
+function findFootnotePreviewElement(element: Element): Element {
+  const doc = element.ownerDocument;
+  let node: Element | null = element;
+  while (node && node !== doc.body) {
+    if (getElementPreviewText(node).trim()) return node;
+    node = node.parentElement;
+  }
+  return element;
+}
+
 async function resolveFootnotePreviewText(
   view: FoliateView | null,
   anchor: HTMLAnchorElement,
@@ -455,7 +541,7 @@ async function resolveFootnotePreviewText(
   const sourceDoc = anchor.ownerDocument;
   const localTarget = findElementByFragmentId(sourceDoc, getHrefFragmentId(rawHref));
   if (localTarget && (isFootnoteLikeElement(localTarget) || isLikelyFootnoteLink(anchor, href))) {
-    return getElementPreviewText(localTarget);
+    return getElementPreviewText(findFootnotePreviewElement(localTarget));
   }
 
   if (!view?.resolveNavigation || !href) return "";
@@ -471,7 +557,10 @@ async function resolveFootnotePreviewText(
       (await view.book?.sections?.[targetIndex]?.createDocument?.());
     if (!targetDoc) return "";
     const target = typeof resolved.anchor === "function" ? resolved.anchor(targetDoc) : null;
-    return getElementPreviewText(target);
+    if (!target) return "";
+    return getElementPreviewText(
+      target instanceof Element ? findFootnotePreviewElement(target) : target,
+    );
   } catch {
     return "";
   }
@@ -709,9 +798,77 @@ export const FoliateViewer = forwardRef<FoliateViewerHandle, FoliateViewerProps>
     const containerRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<FoliateView | null>(null);
     const isViewCreated = useRef(false);
+    // PDF theme-filter state: per-book per-page light decision + doc -> index mapping
+    const pdfPageLightCacheRef = useRef<Map<string, Map<number, boolean>>>(new Map());
+    const pdfDocIndexRef = useRef<WeakMap<Document, number>>(new WeakMap());
     const [loading, setLoading] = useState(true);
     const [footnotePreview, setFootnotePreview] = useState<FootnotePreview | null>(null);
     const activeFootnoteKeyRef = useRef<string | null>(null);
+
+    const applyPdfPageThemeFilter = useCallback(
+      async (doc: Document, index: number, theme: AppTheme) => {
+        const filter = PDF_THEME_FILTERS[theme];
+        const iframe = doc.defaultView?.frameElement as HTMLIFrameElement | null;
+        if (!iframe) return;
+        const background = THEME_COLORS[theme].bg;
+        iframe.style.filter = "";
+        iframe.style.backgroundColor = background;
+        doc.documentElement.style.backgroundColor = background;
+        if (doc.body) doc.body.style.backgroundColor = background;
+        if (!filter) {
+          doc.documentElement.style.setProperty("--readany-pdf-filter", "none");
+          return;
+        }
+        let cache = pdfPageLightCacheRef.current.get(bookKey);
+        if (!cache) {
+          cache = new Map();
+          pdfPageLightCacheRef.current.set(bookKey, cache);
+        }
+        let isLight = cache.get(index);
+        if (isLight === undefined) {
+          const canvas = await waitForPdfPageCanvas(doc);
+          isLight = canvas ? analyzeCanvasIsLight(canvas) : true;
+          cache.set(index, isLight);
+        }
+        doc.documentElement.style.setProperty(
+          "--readany-pdf-filter",
+          isLight ? filter : "none",
+        );
+      },
+      [bookKey],
+    );
+
+    const reapplyPdfThemeFilters = useCallback(
+      (theme: AppTheme) => {
+        const view = viewRef.current;
+        if (!view || format !== "PDF") return;
+        const filter = PDF_THEME_FILTERS[theme];
+        const cache = pdfPageLightCacheRef.current.get(bookKey);
+        const contents = view.renderer?.getContents?.() ?? [];
+        for (const content of contents) {
+          const doc = content?.doc as Document | undefined;
+          const iframe = doc?.defaultView?.frameElement as HTMLIFrameElement | null;
+          if (!doc || !iframe) continue;
+          const index = pdfDocIndexRef.current.get(doc);
+          if (index == null) continue;
+          const background = THEME_COLORS[theme].bg;
+          iframe.style.filter = "";
+          iframe.style.backgroundColor = background;
+          doc.documentElement.style.backgroundColor = background;
+          if (doc.body) doc.body.style.backgroundColor = background;
+          if (!filter) {
+            doc.documentElement.style.setProperty("--readany-pdf-filter", "none");
+            continue;
+          }
+          const isLight = cache?.get(index);
+          doc.documentElement.style.setProperty(
+            "--readany-pdf-filter",
+            isLight === false ? "none" : filter,
+          );
+        }
+      },
+      [format, bookKey],
+    );
 
     const isFixedLayout = isFixedLayoutBook(format, bookDoc);
     // Track when view is ready so hooks/events re-bind
@@ -735,6 +892,7 @@ export const FoliateViewer = forwardRef<FoliateViewerHandle, FoliateViewerProps>
             const view = viewRef.current;
             if (view && viewReady) {
               applyRendererStyles(view, viewSettings, isFixedLayout, newTheme);
+              reapplyPdfThemeFilters(newTheme);
             }
             return newTheme;
           }
@@ -748,7 +906,7 @@ export const FoliateViewer = forwardRef<FoliateViewerHandle, FoliateViewerProps>
       });
 
       return () => observer.disconnect();
-    }, [viewSettings, isFixedLayout, viewReady]);
+    }, [viewSettings, isFixedLayout, viewReady, reapplyPdfThemeFilters]);
 
     const ttsHighlightKeyRef = useRef<string | null>(null);
 
@@ -1857,6 +2015,12 @@ export const FoliateViewer = forwardRef<FoliateViewerHandle, FoliateViewerProps>
           onSectionLoad?.(detail.index);
         }
 
+        // PDF: follow the app theme with per-page smart inversion (dark/sepia)
+        if (format === "PDF" && detail.doc) {
+          pdfDocIndexRef.current.set(detail.doc, detail.index ?? 0);
+          void applyPdfPageThemeFilter(detail.doc, detail.index ?? 0, appTheme);
+        }
+
         // Inject ruby annotations if enabled for this book
         void (async () => {
           try {
@@ -1879,7 +2043,7 @@ export const FoliateViewer = forwardRef<FoliateViewerHandle, FoliateViewerProps>
           }
         })();
       },
-      [appTheme, bookKey, viewSettings, onLoaded, onSectionLoad, isFixedLayout],
+      [appTheme, bookKey, viewSettings, onLoaded, onSectionLoad, isFixedLayout, format, applyPdfPageThemeFilter],
     );
     const docLoadHandlerRef = useRef(docLoadHandlerImpl);
     docLoadHandlerRef.current = docLoadHandlerImpl;
@@ -2026,6 +2190,9 @@ export const FoliateViewer = forwardRef<FoliateViewerHandle, FoliateViewerProps>
         if (!text || !position) {
           activeFootnoteKeyRef.current = null;
           setFootnotePreview(null);
+          // Fallback: if a preview can't be produced, navigate to the
+          // footnote instead of swallowing the click.
+          if (href) viewRef.current?.goTo(href);
           return;
         }
         activeFootnoteKeyRef.current = key;
@@ -2305,6 +2472,20 @@ export const FoliateViewer = forwardRef<FoliateViewerHandle, FoliateViewerProps>
         };
 
         const handlePointerUp = (ev: PointerEvent) => {
+          // Clicks on links are handled by their own navigation (internal
+          // links / footnotes); never treat them as page-turn taps. Use
+          // composedPath() with a realm-independent nodeType check: ev.target
+          // can be a Text node, and elements from content iframes fail
+          // `instanceof Element` (different realm than the parent window).
+          let pointerUpOnLink = false;
+          try {
+            const path = ev.composedPath?.() ?? [];
+            pointerUpOnLink = path.some((node) => {
+              if (!node || (node as Node).nodeType !== 1) return false;
+              const el = node as Element;
+              return typeof el.closest === "function" && Boolean(el.closest("a[href]"));
+            });
+          } catch {}
           // Capture coordinates immediately (before setTimeout)
           const clientX = ev.clientX;
           const clientY = ev.clientY;
@@ -2363,7 +2544,7 @@ export const FoliateViewer = forwardRef<FoliateViewerHandle, FoliateViewerProps>
             } else {
               // No previous selection and no new selection
               // This is a simple click - toggle toolbar if there was no selection before
-              if (!hadSelectionOnPointerDown.current && !hasSelectionNow) {
+              if (!hadSelectionOnPointerDown.current && !hasSelectionNow && !pointerUpOnLink) {
                 // Send message to toggle toolbar
                 console.log("[ReaderTap][iframe:post]", {
                   bookKey,
@@ -2598,6 +2779,9 @@ export const FoliateViewer = forwardRef<FoliateViewerHandle, FoliateViewerProps>
       isViewCreated.current = true;
 
       const openBook = async () => {
+        // Reset PDF theme-filter caches when (re)opening a book
+        pdfPageLightCacheRef.current = new Map();
+        pdfDocIndexRef.current = new WeakMap();
         try {
           await import("foliate-js/view.js");
 
@@ -2751,6 +2935,7 @@ export const FoliateViewer = forwardRef<FoliateViewerHandle, FoliateViewerProps>
       viewSettings.customFontFamily,
       viewSettings.customFontFaceCSS,
       viewSettings.customFontCssUrls,
+      viewSettings.useBookFonts,
       viewSettings.paragraphSpacing,
       isFixedLayout,
       appTheme,
@@ -2922,13 +3107,6 @@ function applyDocumentStyles(
   normalizeBrOnlyParagraphs(doc);
   syncRemoteFontStylesInDocument(doc, settings.customFontCssUrls);
   syncReaderOverrideStylesInDocument(doc, getRendererStyles(settings, theme));
-
-  // Basic styles for images
-  const images = doc.querySelectorAll("img");
-  for (const img of images) {
-    img.style.maxWidth = "100%";
-    img.style.height = "auto";
-  }
 }
 
 function syncReaderOverrideStylesInDocument(doc: Document, css: string) {
@@ -3174,6 +3352,28 @@ function getRendererStyles(settings: ViewSettings, theme: AppTheme): string {
   const layoutScale = settings.fontSize / BASELINE_FONT_SIZE;
   const scaledParagraphSpacing = Math.round(settings.paragraphSpacing * layoutScale);
 
+  // When useBookFonts is enabled (default), do not force the reader font onto
+  // html/body with !important: the book's own font-family (on html, body, or
+  // any element) must win where specified, so body text follows the book too.
+  // The reader font stays as a zero-specificity fallback via :where(). Target
+  // only `html` (not body): body then INHERITS html's font-family, so when the
+  // book sets one on html it propagates to body text instead of body being
+  // pinned to the reader font by a direct rule. When disabled, force the
+  // reader font on html/body and every descendant.
+  const readerFontOverride =
+    settings.useBookFonts === false
+      ? `html, body {
+  font-family: var(--readany-font-family) !important;
+}
+body *:not(svg):not(svg *):not(math):not(math *):not(pre):not(pre *):not(code):not(code *):not(kbd):not(kbd *):not(samp):not(samp *) {
+  font-family: var(--readany-font-family) !important;
+}
+`
+      : `:where(html) {
+  font-family: var(--readany-font-family);
+}
+`;
+
   return `${settings.customFontFaceCSS ? `/* Custom font faces */\n${settings.customFontFaceCSS}\n\n` : ""}/* Font styles */
 html {
   --theme-bg-color: ${bgColor};
@@ -3186,16 +3386,12 @@ html {
 html, body {
   background-color: ${bgColor} !important;
   color: ${fgColor} !important;
-  font-family: var(--readany-font-family) !important;
   font-size: ${settings.fontSize}px !important;
   -webkit-text-size-adjust: none;
   text-size-adjust: none;
 }
 
-body *:not(svg):not(svg *):not(math):not(math *):not(pre):not(pre *):not(code):not(code *):not(kbd):not(kbd *):not(samp):not(samp *) {
-  font-family: var(--readany-font-family) !important;
-}
-
+${readerFontOverride}
 body :not(#__readany_font_size_override):not(svg):not(svg *):not(math):not(math *):not(pre):not(pre *):not(code):not(code *):not(kbd):not(kbd *):not(samp):not(samp *):not(rt):not(rp) {
   font-size: ${settings.fontSize}px !important;
 }
@@ -3224,7 +3420,7 @@ a, a:any-link {
 /* Images */
 img, svg {
   max-width: 100% !important;
-  height: auto !important;
+  height: auto;
 }
 
 /* Selection */

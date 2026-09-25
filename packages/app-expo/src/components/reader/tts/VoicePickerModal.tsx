@@ -18,8 +18,8 @@ import {
 } from "@readany/core/tts";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Modal } from "@/components/eink/EinkAware";
 import {
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,

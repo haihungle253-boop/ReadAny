@@ -16,7 +16,7 @@ export function useUpdateChecker() {
 
   useEffect(() => {
     if (Platform.OS !== "android") return;
-    // Upstream releases don't carry the e-ink adaptations; don't offer them.
+    // Upstream releases are a different app (package); don't offer them here.
     if (Constants.expoConfig?.extra?.appVariant === "eink") return;
 
     let cancelled = false;

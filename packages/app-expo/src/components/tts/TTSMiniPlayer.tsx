@@ -14,12 +14,12 @@ import { fontSize, radius, useColors, withOpacity } from "@/styles/theme";
 import { eventBus } from "@readany/core/utils/event-bus";
 import { useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { Modal } from "@/components/eink/EinkAware";
 import {
   Animated,
   Dimensions,
   Easing,
   type LayoutChangeEvent,
+  Modal,
   Pressable,
   StyleSheet,
   Text,

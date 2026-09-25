@@ -192,27 +192,8 @@
     let currentSectionIndex = 0;
     let totalSections = 0;
     let currentThemeColors = { bg: '#1c1c1e', fg: '#e8e8ed', muted: '#7c7c82', primary: '#3b82f6' };
-    // E-ink mode: no transitions/animations anywhere (each frame is a panel refresh)
-    let currentEink = false;
-    const EINK_NO_MOTION_CSS = '*, *::before, *::after { transition: none !important; animation: none !important; scroll-behavior: auto !important; }';
-
-    function applyEinkToRenderer(renderer) {
-      if (!renderer) return;
-      if (currentEink) renderer.setAttribute('eink', '');
-      else renderer.removeAttribute('eink');
-    }
-
-    function applyEinkToShell() {
-      let style = document.getElementById('readany-eink-style');
-      if (currentEink && !style) {
-        style = document.createElement('style');
-        style.id = 'readany-eink-style';
-        style.textContent = EINK_NO_MOTION_CSS;
-        document.head.appendChild(style);
-      } else if (!currentEink && style) {
-        style.remove();
-      }
-    }
+    let currentThemeMode = 'light';
+    let currentBookIsPdf = false;
     let lastRendererStyles = '';
     let currentViewMode = 'paginated';
     let currentSectionUsesVerticalWriting = false;
@@ -223,6 +204,7 @@
     let currentFontTheme = 'default';
     let currentCustomFontFaceCSS = '';
     let currentCustomFontFamily = '';
+    let currentUseBookFonts = true;
     let tapNavigationInFlight = false;
     let tapNavigationResetTimer = null;
     let readerElement = null;
@@ -1108,12 +1090,27 @@
       return String(cloned.textContent || '').replace(/\s+/g, ' ').trim().slice(0, 600);
     }
 
+    // Well-formed books put the footnote id on a block container (<aside>),
+    // but many real-world books put it on the inline marker itself ("[2]")
+    // whose parent block carries the actual note. Walk up while a node's own
+    // (marker-stripped) text is empty and return the first ancestor that
+    // yields note text - no tag-name or length heuristics.
+    function findFootnotePreviewElement(element) {
+      var doc = element.ownerDocument;
+      var node = element;
+      while (node && node !== doc.body) {
+        if (getFootnoteElementText(node).trim()) return node;
+        node = node.parentElement;
+      }
+      return element;
+    }
+
     async function resolveFootnoteTipText(anchor, href) {
       const rawHref = anchor?.getAttribute?.('href') || href || '';
       const sourceDoc = anchor?.ownerDocument;
       const localTarget = findElementByFragmentId(sourceDoc, getHrefFragmentId(rawHref));
       if (localTarget && (isFootnoteLikeElement(localTarget) || isLikelyFootnoteLink(anchor, href))) {
-        return getFootnoteElementText(localTarget);
+        return getFootnoteElementText(findFootnotePreviewElement(localTarget));
       }
 
       if (!view || !href) return '';
@@ -1133,7 +1130,10 @@
             : null);
         if (!targetDoc) return '';
         const target = typeof resolved.anchor === 'function' ? resolved.anchor(targetDoc) : null;
-        return getFootnoteElementText(target);
+        if (!target) return '';
+        return getFootnoteElementText(
+          target && target.nodeType === 1 ? findFootnotePreviewElement(target) : target,
+        );
       } catch {
         return '';
       }
@@ -1274,10 +1274,10 @@
           await openBook(msg);
           break;
         case 'goNext':
-          if (view) await goNextByMode();
+          if (view) await goNextByMode(undefined, 'rn:goNext');
           break;
         case 'goPrev':
-          if (view) await goPrevByMode();
+          if (view) await goPrevByMode(undefined, 'rn:goPrev');
           break;
         case 'goToFraction':
           if (view && msg.fraction != null) await view.goToFraction(msg.fraction);
@@ -1360,7 +1360,7 @@
           await clearTTSHighlight();
           break;
         case 'setThemeColors':
-          if (msg.colors) setThemeColors(msg.colors);
+          if (msg.colors) setThemeColors(msg.colors, msg.themeMode);
           break;
         case 'extractChapters':
           await handleExtractChapters();
@@ -1388,6 +1388,9 @@
     async function openBook(msg) {
       const container = document.getElementById('reader-container');
       const loading = document.getElementById('loading');
+      currentBookIsPdf = isPDFBookMessage(msg);
+      pdfPageLightCache = {};
+      pdfDocIndexMap = new WeakMap();
       bookTextMetricsJobId += 1;
       if (bookTextMetricsTimer) {
         clearTimeout(bookTextMetricsTimer);
@@ -1527,6 +1530,10 @@
             applyRendererFlowMode(el.renderer);
           }
           applyDocStyles(doc);
+          if (currentBookIsPdf && typeof index === 'number') {
+            pdfDocIndexMap.set(doc, index);
+            applyPdfPageThemeFilter(doc, index);
+          }
           attachTapListener(doc);
           attachPullBookmarkListener(doc);
           attachSelectionListener(doc);
@@ -1673,12 +1680,14 @@
             .then((text) => {
               if (!text) {
                 hideFootnoteTip();
+                // Fallback: navigate to the footnote instead of a dead click.
+                if (href && typeof view.goTo === 'function') view.goTo(href);
                 return;
               }
               activeFootnoteTipKey = key;
               if (!positionFootnoteTip(anchor, text)) hideFootnoteTip();
             })
-            .catch(() => hideFootnoteTip());
+            .catch(() => { hideFootnoteTip(); if (href && typeof view.goTo === 'function') view.goTo(href); });
         });
 
         container.appendChild(el);
@@ -1704,7 +1713,6 @@
         }
 
         const renderer = el.renderer;
-        applyEinkToRenderer(renderer);
         if (renderer && !el.isFixedLayout) {
           applyMobileReflowRendererSizing(renderer);
           // Default gap/margin
@@ -1798,6 +1806,19 @@
     function applySettings(settings) {
       if (!view || !view.renderer) return;
       const renderer = view.renderer;
+      // PDF pages are fixed-layout canvases. Reader font, line-height, custom
+      // font and paragraph-spacing rules would move the transparent text layer
+      // away from the canvas and render a second, misaligned copy of the text.
+      if (currentBookIsPdf) {
+        if (settings.paginatedLayout !== undefined) {
+          currentPaginatedLayout =
+            settings.paginatedLayout === 'single' ? 'single' : 'double';
+        }
+        if (view.isFixedLayout) {
+          applyFixedLayoutRendererSettings(renderer, currentPaginatedLayout);
+        }
+        return;
+      }
 
       // Update custom font state
       if (settings.customFontFaceCSS !== undefined) {
@@ -1806,6 +1827,9 @@
       }
       if (settings.customFontFamily !== undefined) {
         currentCustomFontFamily = settings.customFontFamily || '';
+      }
+      if (settings.useBookFonts !== undefined) {
+        currentUseBookFonts = settings.useBookFonts !== false;
       }
 
       if (settings.fontSize !== undefined) {
@@ -1826,7 +1850,7 @@
       }
 
       if (settings.fontSize !== undefined || settings.lineHeight !== undefined || settings.fontTheme !== undefined || settings.paragraphSpacing !== undefined
-          || settings.customFontFamily !== undefined || settings.customFontFaceCSS !== undefined) {
+          || settings.customFontFamily !== undefined || settings.customFontFaceCSS !== undefined || settings.useBookFonts !== undefined) {
         const fontThemes = {
           default: { cjk: '-apple-system, BlinkMacSystemFont, system-ui, sans-serif', serif: '-apple-system, BlinkMacSystemFont, system-ui, sans-serif' },
           system: { cjk: '-apple-system, BlinkMacSystemFont, system-ui, sans-serif', serif: '-apple-system, BlinkMacSystemFont, system-ui, sans-serif' },
@@ -1858,6 +1882,15 @@
         const layoutScale = currentFontSize / BASELINE_FONT_SIZE;
         const ps = Math.round(currentParagraphSpacing * layoutScale);
 
+        // When useBookFonts is enabled (default), do not force the reader
+        // font family onto every element so the book's own fonts (e.g.
+        // embedded @font-face families) render where the book specifies them.
+        const bodyStarFontOverride = currentUseBookFonts
+          ? ''
+          : `:root:not(.vrtl):not(.vltr) body *:not(svg):not(svg *):not(math):not(math *):not(pre):not(pre *):not(code):not(code *):not(kbd):not(kbd *):not(samp):not(samp *) {
+  font-family: var(--readany-font-family) !important;
+}`;
+
         const baseStyles = `
           :root {
             --readany-font-family: ${fontFamily};
@@ -1869,9 +1902,7 @@
             -webkit-text-size-adjust: none;
             text-size-adjust: none;
           }
-          :root:not(.vrtl):not(.vltr) body *:not(svg):not(svg *):not(math):not(math *):not(pre):not(pre *):not(code):not(code *):not(kbd):not(kbd *):not(samp):not(samp *) {
-            font-family: var(--readany-font-family) !important;
-          }
+          ${bodyStarFontOverride}
           :root:not(.vrtl):not(.vltr) body *:not(svg):not(svg *):not(math):not(math *):not(pre):not(pre *):not(code):not(code *):not(kbd):not(kbd *):not(samp):not(samp *):not(rt):not(rp) {
             font-size: ${fSize}px !important;
           }
@@ -1914,7 +1945,10 @@
           :root:not(.vrtl):not(.vltr) img,
           :root:not(.vrtl):not(.vltr) svg {
             max-width: 100% !important;
-            height: auto !important;
+          }
+          img,
+          svg {
+            height: auto;
           }
           ${getVerticalWritingCompatibilityStyles()}
         `;
@@ -1961,21 +1995,55 @@
       return Math.max(1, (Number.isFinite(size) && size > 0 ? size : fallbackSize) - 96);
     }
 
-    async function goNextByMode(distance) {
+    function readerNavDebug(event, detail) {
+      try {
+        postToRN('debug', {
+          message: `[ReaderNav] ${Date.now()} ${event} ${JSON.stringify(detail || {})}`,
+        });
+      } catch {}
+    }
+
+    async function goNextByMode(distance, source) {
       if (!view) return;
-      if (view.renderer && view.renderer.scrolled) {
-        await view.next(Math.max(1, Number(distance || getScrollNavigationDistance())));
-      } else {
-        await view.next();
+      const detail = {
+        source: source || 'unknown',
+        mode: view.renderer && view.renderer.scrolled ? 'scroll' : 'paginated',
+        section: currentSectionIndex,
+        navigationLocked: !!(view.renderer && view.renderer.navigationLocked),
+      };
+      readerNavDebug('next:start', detail);
+      try {
+        if (view.renderer && view.renderer.scrolled) {
+          await view.next(Math.max(1, Number(distance || getScrollNavigationDistance())));
+        } else {
+          await view.next();
+        }
+        readerNavDebug('next:done', detail);
+      } catch (error) {
+        readerNavDebug('next:error', { ...detail, error: String(error) });
+        throw error;
       }
     }
 
-    async function goPrevByMode(distance) {
+    async function goPrevByMode(distance, source) {
       if (!view) return;
-      if (view.renderer && view.renderer.scrolled) {
-        await view.prev(Math.max(1, Number(distance || getScrollNavigationDistance())));
-      } else {
-        await view.prev();
+      const detail = {
+        source: source || 'unknown',
+        mode: view.renderer && view.renderer.scrolled ? 'scroll' : 'paginated',
+        section: currentSectionIndex,
+        navigationLocked: !!(view.renderer && view.renderer.navigationLocked),
+      };
+      readerNavDebug('prev:start', detail);
+      try {
+        if (view.renderer && view.renderer.scrolled) {
+          await view.prev(Math.max(1, Number(distance || getScrollNavigationDistance())));
+        } else {
+          await view.prev();
+        }
+        readerNavDebug('prev:done', detail);
+      } catch (error) {
+        readerNavDebug('prev:error', { ...detail, error: String(error) });
+        throw error;
       }
     }
 
@@ -2061,16 +2129,15 @@
       syncCustomFontStylesForAllDocs(css);
     }
 
-    function setThemeColors(colors) {
+    function setThemeColors(colors, themeMode) {
       const bg = colors.background || '#1c1c1e';
       const fg = colors.foreground || '#e8e8ed';
       const muted = colors.muted || '#7c7c82';
       const primary = colors.primary || '#3b82f6';
 
       currentThemeColors = { bg, fg, muted, primary };
-      currentEink = !!colors.eink;
-      applyEinkToShell();
-      if (view) applyEinkToRenderer(view.renderer);
+      if (themeMode === 'dark' || themeMode === 'sepia') currentThemeMode = themeMode;
+      else currentThemeMode = 'light';
 
       document.documentElement.style.setProperty('--bg', bg);
       document.documentElement.style.setProperty('--fg', fg);
@@ -2080,14 +2147,126 @@
       document.body.style.color = fg;
 
       if (view && view.renderer && view.renderer.setStyles) {
-        const currentStyles = lastRendererStyles || '';
-        const themedStyles = injectThemeIntoStyles(currentStyles, bg, fg, primary);
-        view.renderer.setStyles(themedStyles);
-        syncReaderOverrideStylesForAllDocs(themedStyles);
+        if (currentBookIsPdf) {
+          view.renderer.setStyles(`
+            html, body { background-color: ${bg} !important; }
+            .textLayer span, .textLayer br { color: transparent !important; }
+          `);
+        } else {
+          const currentStyles = lastRendererStyles || '';
+          const themedStyles = injectThemeIntoStyles(currentStyles, bg, fg, primary);
+          view.renderer.setStyles(themedStyles);
+          syncReaderOverrideStylesForAllDocs(themedStyles);
+        }
       }
 
       if (view && view.setSearchIndicator) {
         view.setSearchIndicator('outline', { color: primary });
+      }
+
+      reapplyPdfThemeFilters();
+    }
+
+    // ─── PDF theme inversion (dark/sepia) with per-page smart skip ───
+    var PDF_THEME_FILTERS = {
+      // Mobile dark theme uses #1c1c1e. Mapping white with invert(0.89)
+      // produces approximately #1c1c1c, avoiding a visible page/shell seam.
+      dark: 'invert(0.89)',
+      // Numerically tuned (invert->sepia->contrast->brightness) so a white PDF
+      // page maps almost exactly to the sepia background #f0e6d2 (rgb 240,230,210).
+      sepia: 'invert(0.245) sepia(0.286) contrast(1.328) brightness(1.005)',
+    };
+    var pdfPageLightCache = {};
+    var pdfDocIndexMap = new WeakMap();
+
+    function analyzeCanvasIsLight(canvas) {
+      var size = 48;
+      var out = document.createElement('canvas');
+      out.width = size;
+      out.height = size;
+      var ctx = out.getContext('2d', { willReadFrequently: true });
+      if (!ctx) return true;
+      try {
+        ctx.drawImage(canvas, 0, 0, size, size);
+        var data = ctx.getImageData(0, 0, size, size).data;
+        var light = 0;
+        for (var i = 0; i < data.length; i += 4) {
+          var lum = 0.299 * data[i] + 0.587 * data[i + 1] + 0.114 * data[i + 2];
+          if (lum > 200) light++;
+        }
+        // A text page is predominantly light; downsampling washes thin text
+        // into gray, so only rely on how much of the page is clearly light.
+        return light / (size * size) > 0.55;
+      } catch (e) {
+        return true;
+      }
+    }
+
+    function waitForPdfPageCanvas(doc, timeoutMs) {
+      timeoutMs = timeoutMs || 5000;
+      return new Promise(function (resolve) {
+        var win = doc.defaultView || window;
+        var raf = typeof win.requestAnimationFrame === 'function'
+          ? win.requestAnimationFrame.bind(win)
+          : function (cb) { setTimeout(function () { cb(performance.now()); }, 50); };
+        var start = performance.now();
+        var check = function () {
+          var canvas = doc.querySelector('#canvas canvas');
+          if (canvas && canvas.width > 0 && canvas.height > 0) { resolve(canvas); return; }
+          if (performance.now() - start > timeoutMs) { resolve(null); return; }
+          raf(check);
+        };
+        check();
+      });
+    }
+
+    function applyPdfPageThemeFilter(doc, index) {
+      var filter = PDF_THEME_FILTERS[currentThemeMode];
+      var iframe = doc.defaultView ? doc.defaultView.frameElement : null;
+      if (!iframe) return;
+      iframe.style.filter = '';
+      iframe.style.backgroundColor = currentThemeColors.bg;
+      doc.documentElement.style.backgroundColor = currentThemeColors.bg;
+      if (doc.body) doc.body.style.backgroundColor = currentThemeColors.bg;
+      if (!filter) {
+        doc.documentElement.style.setProperty('--readany-pdf-filter', 'none');
+        return;
+      }
+      var isLight = pdfPageLightCache[index];
+      if (isLight === undefined) {
+        waitForPdfPageCanvas(doc).then(function (canvas) {
+          var light = canvas ? analyzeCanvasIsLight(canvas) : true;
+          pdfPageLightCache[index] = light;
+          doc.documentElement.style.setProperty('--readany-pdf-filter', light ? filter : 'none');
+        });
+        return;
+      }
+      doc.documentElement.style.setProperty('--readany-pdf-filter', isLight ? filter : 'none');
+    }
+
+    function reapplyPdfThemeFilters() {
+      if (!currentBookIsPdf) return;
+      var filter = PDF_THEME_FILTERS[currentThemeMode];
+      var contents = getRendererContents();
+      for (var i = 0; i < contents.length; i++) {
+        var doc = contents[i] && contents[i].doc;
+        var iframe = doc && doc.defaultView ? doc.defaultView.frameElement : null;
+        if (!doc || !iframe) continue;
+        var index = pdfDocIndexMap.get(doc);
+        if (index === undefined) continue;
+        iframe.style.filter = '';
+        iframe.style.backgroundColor = currentThemeColors.bg;
+        doc.documentElement.style.backgroundColor = currentThemeColors.bg;
+        if (doc.body) doc.body.style.backgroundColor = currentThemeColors.bg;
+        if (!filter) {
+          doc.documentElement.style.setProperty('--readany-pdf-filter', 'none');
+          continue;
+        }
+        var isLight = pdfPageLightCache[index];
+        doc.documentElement.style.setProperty(
+          '--readany-pdf-filter',
+          isLight === false ? 'none' : filter,
+        );
       }
     }
 
@@ -2106,7 +2285,6 @@ p, div, span, blockquote, li, dd, dt, h1, h2, h3, h4, h5, h6, td, th, caption, f
 }
 a { color: ${primary} !important; }
 ::selection { background: rgba(59, 130, 246, 0.3) !important; }
-${currentEink ? EINK_NO_MOTION_CSS : ''}
 /* __end_theme_colors__ */`;
       return themeBlock + '\n' + cleaned;
     }
@@ -2239,12 +2417,24 @@ ${currentEink ? EINK_NO_MOTION_CSS : ''}
     }
 
     function applyDocStyles(doc) {
+      if (currentBookIsPdf) {
+        const styleId = '__readany_pdf_styles__';
+        let style = doc.getElementById(styleId);
+        if (!style) {
+          style = doc.createElement('style');
+          style.id = styleId;
+          doc.head.appendChild(style);
+        }
+        style.textContent = `
+          html, body { background-color: ${currentThemeColors.bg} !important; }
+          .textLayer span, .textLayer br { color: transparent !important; }
+        `;
+        return;
+      }
       syncCustomFontStylesForDoc(doc, currentCustomFontFaceCSS);
       const verticalDoc = isVerticalDoc(doc);
       if (!verticalDoc) {
         for (const img of doc.querySelectorAll('img')) {
-          img.style.maxWidth = '100%';
-          img.style.height = 'auto';
           img.style.webkitUserDrag = 'none';
           img.style.touchAction = 'manipulation';
         }
@@ -2343,6 +2533,11 @@ ${currentEink ? EINK_NO_MOTION_CSS : ''}
       }, { passive: true });
 
       doc.addEventListener('touchend', (e) => {
+        if (doc.__readany_selection_tap_guard_until > Date.now() && !doc.__readany_selection_tap_guard_consumed) {
+          doc.__readany_selection_tap_guard_consumed = true;
+          tapState = null;
+          return;
+        }
         if (bookmarkPullGestureActive || tapNavigationInFlight) {
           tapState = null;
           return;
@@ -2415,9 +2610,9 @@ ${currentEink ? EINK_NO_MOTION_CSS : ''}
         e.stopPropagation();
 
         if (normalizedX < centerStart) {
-          if (view) goPrevByMode();
+          if (view) goPrevByMode(undefined, 'tap:left');
         } else {
-          if (view) goNextByMode();
+          if (view) goNextByMode(undefined, 'tap:right');
         }
       }, { passive: false, capture: true });
     }
@@ -2584,10 +2779,15 @@ ${currentEink ? EINK_NO_MOTION_CSS : ''}
 
       doc.addEventListener('touchend', () => {
         if (!isIOSLike) return;
+        const currentSelection = doc.getSelection();
+        if (currentSelection && !currentSelection.isCollapsed && currentSelection.toString().trim()) {
+          armSelectionTapGuardForDocument(doc);
+        }
         setTimeout(() => {
           if (iosHackPending) return;
           const sel = doc.getSelection();
           if (!sel || sel.isCollapsed || !sel.toString().trim() || !sel.rangeCount) return;
+          armSelectionTapGuardForDocument(doc);
           const range = sel.getRangeAt(0);
           // iOS hack: remove and re-add to dismiss system menu
           iosHackPending = true;
@@ -2600,7 +2800,7 @@ ${currentEink ? EINK_NO_MOTION_CSS : ''}
             emitSelection(doc, sel, range);
           }, 30);
         }, 50);
-      }, { passive: true });
+      }, { passive: true, capture: true });
 
       doc.addEventListener('selectionchange', () => {
         if (doc.__readany_isJiggling) return;
@@ -2644,6 +2844,10 @@ ${currentEink ? EINK_NO_MOTION_CSS : ''}
     function emitSelection(doc, sel, range) {
       const text = getRangeTextWithoutRuby(range, sel.toString());
       if (!text) return;
+      // iOS may emit one synthetic tap 100-200ms after the selection handle is
+      // released. Consume only that one trailing tap; later user taps remain
+      // available for immediate page navigation.
+      armSelectionTapGuardForDocument(doc);
 
       const rect = range.getBoundingClientRect();
       const rects = Array.from(range.getClientRects()).filter(r => r.width > 0 && r.height > 0);
@@ -2671,6 +2875,11 @@ ${currentEink ? EINK_NO_MOTION_CSS : ''}
           selectionBottom: iframeRect.top + lastRect.bottom,
         },
       });
+    }
+
+    function armSelectionTapGuardForDocument(doc) {
+      doc.__readany_selection_tap_guard_until = Date.now() + 350;
+      doc.__readany_selection_tap_guard_consumed = false;
     }
 
     // ─── TOC conversion ───
@@ -3817,8 +4026,8 @@ ${currentEink ? EINK_NO_MOTION_CSS : ''}
     }
 
     // ─── Expose global functions for injectJavaScript ───
-    window.goNext = function (distance) { goNextByMode(distance); };
-    window.goPrev = function (distance) { goPrevByMode(distance); };
+    window.goNext = function (distance) { goNextByMode(distance, 'api:goNext'); };
+    window.goPrev = function (distance) { goPrevByMode(distance, 'api:goPrev'); };
     window.goLeft = function () { if (view) view.goLeft(); };
     window.goRight = function () { if (view) view.goRight(); };
     window.goToHref = function (href) { if (view) view.goTo(href); };

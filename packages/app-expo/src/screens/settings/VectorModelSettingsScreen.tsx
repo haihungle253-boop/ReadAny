@@ -1,4 +1,5 @@
 import { ChevronLeftIcon, EditIcon, PlusIcon, Trash2Icon, XIcon } from "@/components/ui/Icon";
+import { KeyboardAwareScrollView } from "@/components/ui/KeyboardAwareScrollView";
 import { useResponsiveLayout } from "@/hooks/use-responsive-layout";
 import { useVectorModelStore } from "@/stores/vector-model-store";
 import {
@@ -6,10 +7,14 @@ import {
   fontSize,
   fontWeight,
   radius,
+  spacing,
   useColors,
   withOpacity,
 } from "@/styles/theme";
 import { useNavigation } from "@react-navigation/native";
+import { BUILTIN_EMBEDDING_MODELS } from "@readany/core/ai/builtin-embedding-models";
+import { clearModelCache, loadEmbeddingPipeline } from "@readany/core/ai/local-embedding-service";
+import { ensureNativeEmbeddingEngine } from "@/lib/rag/configure-search";
 import type { VectorModelConfig } from "@readany/core/types";
 import {
   EmbeddingEndpointTestError,
@@ -23,9 +28,6 @@ import {
 import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
   StyleSheet,
   Switch,
   Text,
@@ -62,17 +64,14 @@ export default function VectorModelSettingsScreen() {
         </View>
       </View>
 
-      <KeyboardAvoidingView
-        style={s.keyboardView}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      <KeyboardAwareScrollView
+        style={s.scrollView}
+        contentContainerStyle={s.scrollContent}
+        showsVerticalScrollIndicator={false}
+        bottomOffset={spacing.xxl * 3}
+        extraKeyboardSpace={spacing.xxl * 2}
+        contentBottomInset={spacing.xxl * 3}
       >
-        <ScrollView
-          style={s.scrollView}
-          contentContainerStyle={s.scrollContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
-        >
           <View style={{ width: "100%", maxWidth: layout.centeredContentWidth }}>
             {/* Enable switch */}
             <View style={s.section}>
@@ -117,6 +116,7 @@ export default function VectorModelSettingsScreen() {
                 </View>
 
                 <RemoteModelsSection />
+                <BuiltinModelsSection />
               </>
             )}
 
@@ -169,9 +169,126 @@ export default function VectorModelSettingsScreen() {
 
             <View style={{ height: 24 }} />
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
+  );
+}
+
+function BuiltinModelsSection() {
+  const colors = useColors();
+  const s = makeStyles(colors);
+    const model = BUILTIN_EMBEDDING_MODELS.find((candidate) => candidate.id === "bge-small-zh-v1.5");
+  const {
+    selectedBuiltinModelId, builtinModelStates, vectorModelMode, setSelectedBuiltinModelId,
+    setVectorModelMode, updateBuiltinModelState,
+  } = useVectorModelStore();
+  const [clearing, setClearing] = useState(false);
+  if (!model) return null;
+  const state = builtinModelStates[model.id];
+  const ready = state?.status === "ready";
+  const downloading = state?.status === "downloading";
+  const selected = selectedBuiltinModelId === model.id && vectorModelMode === "builtin";
+
+  const select = async () => {
+    if (ready) { setSelectedBuiltinModelId(model.id); setVectorModelMode("builtin"); return; }
+      updateBuiltinModelState(model.id, { status: "downloading", progress: 0, error: undefined });
+      try {
+        await ensureNativeEmbeddingEngine();
+        await loadEmbeddingPipeline(model.id, (progress) => updateBuiltinModelState(model.id, { progress }));
+      updateBuiltinModelState(model.id, { status: "ready", progress: 100 });
+      setSelectedBuiltinModelId(model.id); setVectorModelMode("builtin");
+    } catch (error) {
+      updateBuiltinModelState(model.id, { status: "error", error: error instanceof Error ? error.message : String(error) });
+    }
+  };
+  const clear = async () => {
+    setClearing(true);
+    try { await clearModelCache(model.id); setSelectedBuiltinModelId(null); updateBuiltinModelState(model.id, { status: "idle", progress: 0, error: undefined }); }
+    catch (error) { updateBuiltinModelState(model.id, { status: "error", error: error instanceof Error ? error.message : String(error) }); }
+    finally { setClearing(false); }
+  };
+
+  return (
+    <View style={s.section}>
+      <Text style={s.sectionTitle}>本地模型</Text>
+      <Text style={s.sectionDesc}>模型下载到本机后离线运行，不会发送书籍内容。BGE 适合中文，MiniLM 适合英文；不同模型需要分别重新向量化。</Text>
+      <View style={[s.modelCard, selected && s.modelCardActive]}>
+          <View style={s.modelCardTop}>
+            <View style={s.modelInfo}><Text style={s.modelName}>{model.name}</Text><Text style={s.modelSize}>{model.dimension} 维 · {model.size}</Text></View>
+          {ready ? <Switch value={selected} onValueChange={(value) => value ? select() : setSelectedBuiltinModelId(null)} trackColor={{ false: colors.muted, true: colors.primary }} thumbColor={colors.card} /> :
+            <TouchableOpacity style={s.downloadBtn} disabled={downloading} onPress={select}><Text style={s.downloadBtnText}>{downloading ? `下载 ${state?.progress ?? 0}%` : "下载并使用"}</Text></TouchableOpacity>}
+        </View>
+        {ready && <TouchableOpacity style={s.clearBtn} disabled={clearing} onPress={clear}><Text style={s.clearBtnText}>{clearing ? "正在清理…" : "删除本地模型"}</Text></TouchableOpacity>}
+        {state?.error ? <Text style={[s.testResult, s.testError]}>{state.error}</Text> : null}
+      </View>
+      <BuiltinEnglishModelCard />
+    </View>
+  );
+}
+
+function BuiltinEnglishModelCard() {
+  const colors = useColors();
+  const s = makeStyles(colors);
+  const model = BUILTIN_EMBEDDING_MODELS.find((candidate) => candidate.id === "all-MiniLM-L6-v2");
+  const {
+    selectedBuiltinModelId, builtinModelStates, vectorModelMode, setSelectedBuiltinModelId,
+    setVectorModelMode, updateBuiltinModelState,
+  } = useVectorModelStore();
+  const [clearing, setClearing] = useState(false);
+  if (!model) return null;
+  const state = builtinModelStates[model.id];
+  const ready = state?.status === "ready";
+  const downloading = state?.status === "downloading";
+  const selected = selectedBuiltinModelId === model.id && vectorModelMode === "builtin";
+
+  const select = async () => {
+    if (ready) {
+      setSelectedBuiltinModelId(model.id);
+      setVectorModelMode("builtin");
+      return;
+    }
+    updateBuiltinModelState(model.id, { status: "downloading", progress: 0, error: undefined });
+    try {
+      await ensureNativeEmbeddingEngine();
+      await loadEmbeddingPipeline(model.id, (progress) => updateBuiltinModelState(model.id, { progress }));
+      updateBuiltinModelState(model.id, { status: "ready", progress: 100 });
+      setSelectedBuiltinModelId(model.id);
+      setVectorModelMode("builtin");
+    } catch (error) {
+      updateBuiltinModelState(model.id, { status: "error", error: error instanceof Error ? error.message : String(error) });
+    }
+  };
+  const clear = async () => {
+    setClearing(true);
+    try {
+      await clearModelCache(model.id);
+      setSelectedBuiltinModelId(null);
+      updateBuiltinModelState(model.id, { status: "idle", progress: 0, error: undefined });
+    } catch (error) {
+      updateBuiltinModelState(model.id, { status: "error", error: error instanceof Error ? error.message : String(error) });
+    } finally {
+      setClearing(false);
+    }
+  };
+
+  return (
+    <View style={[s.modelCard, selected && s.modelCardActive]}>
+      <View style={s.modelCardTop}>
+        <View style={s.modelInfo}>
+          <Text style={s.modelName}>{model.name}</Text>
+          <Text style={s.modelSize}>{model.dimension} 维 · {model.size} · 英文</Text>
+        </View>
+        {ready ? (
+          <Switch value={selected} onValueChange={(value) => value ? select() : setSelectedBuiltinModelId(null)} trackColor={{ false: colors.muted, true: colors.primary }} thumbColor={colors.card} />
+        ) : (
+          <TouchableOpacity style={s.downloadBtn} disabled={downloading} onPress={select}>
+            <Text style={s.downloadBtnText}>{downloading ? `下载 ${state?.progress ?? 0}%` : "下载并使用"}</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+      {ready && <TouchableOpacity style={s.clearBtn} disabled={clearing} onPress={clear}><Text style={s.clearBtnText}>{clearing ? "正在清理…" : "删除本地模型"}</Text></TouchableOpacity>}
+      {state?.error ? <Text style={[s.testResult, s.testError]}>{state.error}</Text> : null}
+    </View>
   );
 }
 
@@ -668,7 +785,7 @@ const makeStyles = (colors: ThemeColors) =>
       marginTop: 12,
     },
     fieldInput: {
-      minHeight: 36,
+      height: 36,
       backgroundColor: colors.muted,
       borderRadius: radius.lg,
       paddingHorizontal: 12,

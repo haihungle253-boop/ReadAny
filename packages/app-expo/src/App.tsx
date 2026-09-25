@@ -28,12 +28,10 @@ import { StatusBar } from "expo-status-bar";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { LogBox, Platform, Text, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { ReduceMotion, ReducedMotionConfig } from "react-native-reanimated";
+import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { AnimatedSplash } from "@/components/splash/AnimatedSplash";
-import { isOnyxDevice } from "@/lib/eink/eink-state";
-import { installEinkAnimationPatch } from "@/lib/eink/patch-animations";
 import { rnSessionEventSource } from "@/hooks";
 import { setStreamingFetch } from "@readany/core/ai/llm-provider";
 import { initDatabase } from "@readany/core/db/database";
@@ -56,6 +54,7 @@ import { UpdateDialog } from "@/components/update/UpdateDialog";
 import { useUpdateChecker } from "@/hooks/use-update-checker";
 import { navigationRef } from "@/lib/navigationRef";
 import { ExpoPlatformService } from "@/lib/platform/expo-platform-service";
+import { subscribeRagSearchConfiguration } from "@/lib/rag/configure-search";
 import { MobileSyncAdapter } from "@/lib/sync/sync-adapter-mobile";
 import { RootNavigator } from "@/navigation/RootNavigator";
 import { useLibraryStore } from "@/stores/library-store";
@@ -63,7 +62,6 @@ import { ThemeProvider, useTheme } from "@/styles/ThemeContext";
 import { useAutoSync } from "@readany/core/hooks/use-auto-sync";
 
 installFeedbackLogCapture();
-installEinkAnimationPatch();
 
 // iOS New-Arch + expo-dev-client cold-start: when dev-client swaps its boot
 // RCTInstance for the app's instance, RCTTurboModuleManager waits up to 10s for
@@ -90,11 +88,18 @@ export default function App() {
   const [bootError, setBootError] = useState<string | null>(null);
 
   useEffect(() => {
+    let unsubscribeRagSearch: (() => void) | undefined;
+
     async function bootstrap() {
       try {
         console.log("[App] bootstrap: register platform service");
         const platform = new ExpoPlatformService();
         setPlatformService(platform);
+
+        // Vectorization and Reader Agent queries use separate core paths.
+        // Synchronize the query-side service immediately and after settings
+        // hydration/changes so remote semantic search works on mobile too.
+          unsubscribeRagSearch = await subscribeRagSearchConfiguration();
 
         console.log("[App] bootstrap: register sync adapter");
         setSyncAdapter(new MobileSyncAdapter());
@@ -197,6 +202,7 @@ export default function App() {
       }
     }
     bootstrap();
+    return () => unsubscribeRagSearch?.();
   }, []);
 
   const handleSplashFinish = useCallback(() => {
@@ -237,9 +243,7 @@ export default function App() {
           flex: 1,
           justifyContent: "center",
           alignItems: "center",
-          // White on e-ink devices: a full-screen dark frame there means a
-          // heavy flashing refresh on every cold start.
-          backgroundColor: isOnyxDevice() ? "#ffffff" : "#05042B",
+          backgroundColor: "#05042B",
         }}
       >
         {/* Background matches animated splash so transition is seamless */}
@@ -251,23 +255,14 @@ export default function App() {
     <I18nextProvider i18n={i18n}>
       <ThemeProvider>
         <AppInner />
-        {!splashDone && <SplashGate onFinish={handleSplashFinish} />}
+        {!splashDone && <AnimatedSplash onFinish={handleSplashFinish} />}
       </ThemeProvider>
     </I18nextProvider>
   );
 }
 
-/** Skips the animated splash in e-ink mode. */
-function SplashGate({ onFinish }: { onFinish: () => void }) {
-  const { isEink } = useTheme();
-  useEffect(() => {
-    if (isEink) onFinish();
-  }, [isEink, onFinish]);
-  return isEink ? null : <AnimatedSplash onFinish={onFinish} />;
-}
-
 function AppInner() {
-  const { colors, isDark, isEink, mode } = useTheme();
+  const { colors, isDark, mode } = useTheme();
   const loadBooks = useLibraryStore((s) => s.loadBooks);
   useUpdateChecker();
   useAutoSync(loadBooks);
@@ -289,15 +284,16 @@ function AppInner() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1, backgroundColor: colors.background }}>
-      {isEink && <ReducedMotionConfig mode={ReduceMotion.Always} />}
-      <SafeAreaProvider>
-        <NavigationContainer theme={navTheme} ref={navigationRef}>
-          <StatusBar style={mode === "dark" ? "light" : "dark"} />
-          <RootNavigator />
-        </NavigationContainer>
-        <UpdateDialog />
-        <FloatingTTSBubble />
-      </SafeAreaProvider>
+      <KeyboardProvider>
+        <SafeAreaProvider>
+          <NavigationContainer theme={navTheme} ref={navigationRef}>
+            <StatusBar style={mode === "dark" ? "light" : "dark"} />
+            <RootNavigator />
+          </NavigationContainer>
+          <UpdateDialog />
+          <FloatingTTSBubble />
+        </SafeAreaProvider>
+      </KeyboardProvider>
     </GestureHandlerRootView>
   );
 }

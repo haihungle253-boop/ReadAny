@@ -18,6 +18,7 @@
     "askPlaceholder": "输入你的问题...",
     "askBookPlaceholder": "关于这本书的问题...",
     "askAboutQuote": "关于选中的文本提问...",
+    "selectedText": "选中文本",
     "suggestions": {
       "summarizeReading": "总结我最近的阅读",
       "analyzeArguments": "分析核心论点",
@@ -28,6 +29,8 @@
       "analyzeAuthor": "分析作者的论点"
     },
     "aiAssistant": "AI 阅读助手",
+    "fontSize": "对话字号",
+    "fontSizeHint": "对话和笔记浮窗共用这个字号，书籍正文字号在阅读设置里调。",
     "aiAssistantDesc": "分析内容、回答问题，帮助你更好地理解书籍。",
     "deepThinking": "深度思考",
     "deepThinkingHint": "启用更深入的分析和推理过程，响应时间可能更长",

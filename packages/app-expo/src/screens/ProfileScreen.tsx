@@ -50,8 +50,8 @@ import Constants from "expo-constants";
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator } from "@/components/eink/EinkAware";
 import {
+  ActivityIndicator,
   Alert,
   Linking,
   ScrollView,

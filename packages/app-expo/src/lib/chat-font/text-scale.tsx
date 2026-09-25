@@ -1,25 +1,54 @@
 /**
- * Scales every React Native <Text> and <TextInput> by the UI font scale.
+ * Scoped text scaling: every React Native <Text>/<TextInput> rendered inside a
+ * <ChatTextScale> is scaled by the chat font size; everything else is left
+ * exactly as it is.
  *
- * Most screens hard-code phone-sized font sizes, which are too small on a
- * 10" e-ink tablet. Rather than touching every style, this swaps the Text and
- * TextInput exports of `react-native` for thin wrappers that multiply
- * fontSize/lineHeight. Third-party components (markdown renderer, navigation
- * tab labels) pick it up too.
+ * Chat screens are built from many components with hard-coded font sizes,
+ * plus a third-party markdown renderer. Instead of threading a size through
+ * all of them, react-native's Text/TextInput exports are swapped (once, from
+ * index.js) for wrappers that multiply fontSize/lineHeight by the scale in
+ * context. Outside a provider the scale is 1 and the wrappers pass through.
  *
  * Must be imported from index.js BEFORE the app: Metro compiles
  * `import { Text } from "react-native"` to `require("react-native").Text`,
  * evaluated once when each module loads.
  */
-import { type Context, useContext } from "react";
+import { type ComponentType, type Context, type ReactNode, createContext, useContext } from "react";
 import type { StyleProp, TextInputProps, TextProps, TextStyle } from "react-native";
 import { StyleSheet } from "react-native";
-import { loadUiFontScale, useUiFontScale } from "./ui-font-scale";
+import { CHAT_FONT_BASE, loadChatFontSize, useChatFontSize } from "./chat-font-size";
 
 /** React Native's implicit fontSize when a style sets none. */
 const RN_DEFAULT_FONT_SIZE = 14;
 
-type RNModule = typeof import("react-native");
+const TextScaleContext = createContext(1);
+
+/**
+ * Scales all text below it by the chat font size setting. `maxScale` keeps
+ * compact chrome (headers, toolbars) from outgrowing its layout.
+ */
+export function ChatTextScale({ children, maxScale }: { children: ReactNode; maxScale?: number }) {
+  const size = useChatFontSize();
+  const scale = size / CHAT_FONT_BASE;
+  return (
+    <TextScaleContext.Provider value={maxScale ? Math.min(scale, maxScale) : scale}>
+      {children}
+    </TextScaleContext.Provider>
+  );
+}
+
+/** Wraps a screen so all of its text follows the chat font size. */
+export function withChatTextScale<P extends object>(Screen: ComponentType<P>): ComponentType<P> {
+  function ChatTextScaled(props: P) {
+    return (
+      <ChatTextScale>
+        <Screen {...props} />
+      </ChatTextScale>
+    );
+  }
+  ChatTextScaled.displayName = `ChatTextScaled(${Screen.displayName ?? Screen.name})`;
+  return ChatTextScaled;
+}
 
 function scaledStyle(
   style: StyleProp<TextStyle>,
@@ -35,6 +64,8 @@ function scaledStyle(
   return [style, override];
 }
 
+type RNModule = typeof import("react-native");
+
 function install() {
   // A plain require: `import * as` would hand us Metro's copy of the exports
   // object, and redefining properties on the copy changes nothing.
@@ -44,14 +75,14 @@ function install() {
   const TextAncestorContext = rn.unstable_TextAncestorContext as Context<boolean>;
 
   function Text(props: TextProps) {
-    const scale = useUiFontScale();
+    const scale = useContext(TextScaleContext);
     const insideText = useContext(TextAncestorContext);
     if (scale === 1) return <BaseText {...props} />;
     return <BaseText {...props} style={scaledStyle(props.style, scale, insideText)} />;
   }
 
   function TextInput(props: TextInputProps) {
-    const scale = useUiFontScale();
+    const scale = useContext(TextScaleContext);
     if (scale === 1) return <BaseTextInput {...props} />;
     return <BaseTextInput {...props} style={scaledStyle(props.style, scale, false)} />;
   }
@@ -70,4 +101,4 @@ function install() {
 }
 
 install();
-loadUiFontScale();
+loadChatFontSize();

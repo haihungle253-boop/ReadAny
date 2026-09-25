@@ -84,6 +84,8 @@ jobs:
           target_commitish: ${{ github.sha }}
           prerelease: true
           body: |
-            ReadAny e-ink build for Onyx BOOX-firmware tablets (arm64).
+            ReadAny build for an Onyx BOOX-firmware e-ink tablet (arm64):
+            adjustable chat text size ("Aa" in both AI chat screens) and
+            theme-following, scrollable note pop-ups in the reader.
             Package `com.readany.app.eink` installs next to the regular app.
           files: ${{ steps.apk.outputs.name }}

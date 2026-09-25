@@ -5,8 +5,7 @@ import { XIcon } from "@/components/ui/Icon";
 import { useResponsiveLayout } from "@/hooks/use-responsive-layout";
 import { useColors } from "@/styles/theme";
 import type { ReadSettings } from "@readany/core/types";
-import { ActivityIndicator, Modal } from "@/components/eink/EinkAware";
-import { Platform, Pressable, ScrollView, Text, TouchableOpacity, View } from "react-native";
+import { ActivityIndicator, Modal, Platform, Pressable, ScrollView, Text, TouchableOpacity, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { makeStyles } from "./reader-styles";
@@ -186,6 +185,21 @@ export function ReaderSettingsPanel({ visible, readSettings, bookId, onClose, on
                 ))}
               </View>
             </ScrollView>
+          </View>
+          {/* Use book fonts */}
+          <View style={s.settingRow}>
+            <View style={s.settingLabelBlock}>
+              <Text style={s.settingLabel}>{t("reader.useBookFonts")}</Text>
+              <Text style={s.settingHint}>{t("reader.useBookFontsDesc")}</Text>
+            </View>
+            <TouchableOpacity
+              style={[s.settingToggleBtn, readSettings.useBookFonts !== false && s.settingToggleBtnActive]}
+              onPress={() => onUpdateSetting("useBookFonts", readSettings.useBookFonts === false)}
+            >
+              <Text style={[s.settingToggleText, readSettings.useBookFonts !== false && s.settingToggleTextActive]}>
+                {readSettings.useBookFonts !== false ? t("settings.enabled") : t("settings.disabled")}
+              </Text>
+            </TouchableOpacity>
           </View>
           {/* View Mode */}
           <View style={s.settingRow}>

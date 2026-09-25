@@ -10,9 +10,10 @@ import { useResponsiveLayout } from "@/hooks/use-responsive-layout";
 import { fontSize, fontWeight, radius, useColors, withOpacity } from "@/styles/theme";
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Modal } from "@/components/eink/EinkAware";
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -142,7 +143,7 @@ export function WebDavConnectSheet({
           color: colors.foreground,
         },
         input: {
-          minHeight: 48,
+          height: 48,
           borderRadius: radius.xl,
           borderWidth: 1,
           borderColor: withOpacity(colors.border, 0.92),

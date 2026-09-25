@@ -1,10 +1,10 @@
 import { BookOpenIcon, MessageSquareIcon, NotebookPenIcon, UserIcon } from "@/components/ui/Icon";
 import { useResponsiveLayout } from "@/hooks/use-responsive-layout";
 import { ChatScreen } from "@/screens/ChatScreen";
+import { withChatTextScale } from "@/lib/chat-font/text-scale";
 import { LibraryScreen } from "@/screens/LibraryScreen";
 import { NotesScreen } from "@/screens/NotesScreen";
 import { ProfileScreen } from "@/screens/ProfileScreen";
-import { useUiFontScale } from "@/lib/ui-scale/ui-font-scale";
 import { useTheme } from "@/styles/ThemeContext";
 /**
  * TabNavigator — bottom tab bar matching the Tauri mobile app's 4 tabs.
@@ -14,6 +14,9 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { useTranslation } from "react-i18next";
 import { Platform } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
+// All chat text follows the chat font size (header button "Aa").
+const ScaledChatScreen = withChatTextScale(ChatScreen);
 
 export type TabParamList = {
   Library: undefined;
@@ -40,11 +43,7 @@ export function TabNavigator() {
     Platform.OS === "android" ? Math.max(insets.bottom, androidNavigationFallback) : insets.bottom;
 
   const baseTabBarHeight = layout.isTabletLandscape ? 72 : layout.isTablet ? 76 : 60;
-  const tabLabelSize = layout.isTablet ? 13 : 12;
-  // Labels grow with the interface text size; make room so they don't clip.
-  const uiFontScale = useUiFontScale();
-  const labelGrowth = Math.ceil((uiFontScale - 1) * tabLabelSize * 1.4);
-  const tabBarHeight = baseTabBarHeight + labelGrowth + bottomInset;
+  const tabBarHeight = baseTabBarHeight + bottomInset;
 
   return (
     <Tab.Navigator
@@ -55,7 +54,7 @@ export function TabNavigator() {
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.mutedForeground,
         tabBarLabelStyle: {
-          fontSize: tabLabelSize,
+          fontSize: layout.isTablet ? 13 : 12,
           fontWeight: "500",
           marginBottom: layout.isTabletLandscape ? 2 : 0,
         },
@@ -83,7 +82,7 @@ export function TabNavigator() {
       />
       <Tab.Screen
         name="Chat"
-        component={ChatScreen}
+        component={ScaledChatScreen}
         options={{
           tabBarLabel: t("tabs.ai", "AI"),
           tabBarIcon: ({ color, size }) => <MessageSquareIcon color={color} size={size} />,

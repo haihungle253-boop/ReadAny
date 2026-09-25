@@ -20,8 +20,9 @@ import {
 } from "@readany/core/tts";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Modal } from "@/components/eink/EinkAware";
 import {
+  ActivityIndicator,
+  Modal,
   Platform,
   Pressable,
   ScrollView,

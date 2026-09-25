@@ -8,10 +8,10 @@ import {
 import { useResponsiveLayout } from "@/hooks/use-responsive-layout";
 import { useColors, fontSize, fontWeight, radius, withOpacity } from "@/styles/theme";
 import { useTranslation } from "react-i18next";
-import { Modal } from "@/components/eink/EinkAware";
 import {
   Alert,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   ScrollView,

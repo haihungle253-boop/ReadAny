@@ -28,6 +28,8 @@
       "analyzeAuthor": "저자의 논점 분석"
     },
     "aiAssistant": "AI 독서 어시스턴트",
+    "fontSize": "채팅 글자 크기",
+    "fontSizeHint": "채팅과 메모 팝업에 적용됩니다. 책 본문 글자 크기는 리더 설정에서 조정합니다.",
     "aiAssistantDesc": "내용을 분석하고, 질문에 답하며, 책을 더 잘 이해하도록 도와줘요.",
     "deepThinking": "깊은 사고",
     "deepThinkingHint": "더 깊은 분석과 추론을 활성화해요. 응답 시간이 길어질 수 있어요",

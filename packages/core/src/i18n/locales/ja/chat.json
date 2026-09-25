@@ -28,6 +28,8 @@
       "analyzeAuthor": "著者の主張を分析"
     },
     "aiAssistant": "AI読書アシスタント",
+    "fontSize": "チャットの文字サイズ",
+    "fontSizeHint": "チャットとメモのポップアップに適用されます。本文の文字サイズはリーダー設定で調整します。",
     "aiAssistantDesc": "コンテンツを分析し、質問に答え、本の理解を深めるお手伝いをします。",
     "deepThinking": "深い思考",
     "deepThinkingHint": "より深い分析と推論を有効にします。応答時間が長くなる場合があります",

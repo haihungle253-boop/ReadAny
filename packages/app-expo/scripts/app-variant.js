@@ -13,7 +13,8 @@ const APP_VARIANTS = {
     androidPackage: "com.readany.app.preview",
     scheme: "readany-preview",
   },
-  // E-ink build for Onyx BOOX-firmware tablets; installs next to the regular app.
+  // Personal build for an Onyx BOOX-firmware e-ink tablet; installs next to
+  // the regular app.
   eink: {
     key: "eink",
     name: "ReadAny 墨水屏",

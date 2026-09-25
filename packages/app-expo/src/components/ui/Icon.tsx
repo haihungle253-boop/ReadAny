@@ -44,13 +44,6 @@ export const BookOpenIcon = icon(() => (
   </>
 ));
 
-export const TabletIcon = icon(() => (
-  <>
-    <Rect width="16" height="20" x="4" y="2" rx="2" ry="2" />
-    <Path d="M12 18h.01" />
-  </>
-));
-
 export const MessageSquareIcon = icon(() => (
   <>
     <Path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />

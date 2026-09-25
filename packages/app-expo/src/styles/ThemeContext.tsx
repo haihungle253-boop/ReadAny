@@ -4,11 +4,10 @@ import * as SecureStore from "expo-secure-store";
  *
  * oklch values from globals.css are converted to hex.
  */
-import { isOnyxDevice, setEinkEnabled } from "@/lib/eink/eink-state";
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import type { ReactNode } from "react";
 
-export type ThemeMode = "light" | "dark" | "sepia" | "eink";
+export type ThemeMode = "light" | "dark" | "sepia";
 
 export interface ThemeColors {
   background: string;
@@ -140,48 +139,11 @@ const sepiaColors: ThemeColors = {
   stone500: "#78716c",
 };
 
-// ── E-ink theme — pure black on white. E-ink panels show ~16 gray levels,
-// so keep grays few and far apart; accents collapse to black. ──
-const einkColors: ThemeColors = {
-  background: "#ffffff",
-  foreground: "#000000",
-  card: "#ffffff",
-  cardForeground: "#000000",
-  muted: "#eeeeee",
-  mutedForeground: "#555555",
-  // Mid-gray so an active (black) border still stands out.
-  border: "#999999",
-  primary: "#000000",
-  primaryForeground: "#ffffff",
-  destructive: "#000000",
-  destructiveForeground: "#ffffff",
-  accent: "#eeeeee",
-  accentForeground: "#000000",
-  indigo: "#000000",
-  emerald: "#000000",
-  amber: "#000000",
-  blue: "#000000",
-  violet: "#000000",
-  highlightYellow: "#dddddd",
-  highlightGreen: "#cccccc",
-  highlightBlue: "#bbbbbb",
-  highlightPink: "#aaaaaa",
-  highlightPurple: "#999999",
-  stone100: "#ffffff",
-  stone200: "#eeeeee",
-  stone300: "#cccccc",
-  stone400: "#888888",
-  stone500: "#555555",
-};
-
 const THEME_MAP: Record<ThemeMode, ThemeColors> = {
   light: lightColors,
   dark: darkColors,
   sepia: sepiaColors,
-  eink: einkColors,
 };
-
-const THEME_MODES: ThemeMode[] = ["light", "dark", "sepia", "eink"];
 
 const STORAGE_KEY = "readany-theme";
 
@@ -190,7 +152,6 @@ interface ThemeContextValue {
   colors: ThemeColors;
   setMode: (mode: ThemeMode) => void;
   isDark: boolean;
-  isEink: boolean;
 }
 
 const ThemeContext = createContext<ThemeContextValue>({
@@ -198,12 +159,11 @@ const ThemeContext = createContext<ThemeContextValue>({
   colors: sepiaColors,
   setMode: () => {},
   isDark: false,
-  isEink: false,
 });
 
 export function ThemeProvider({
   children,
-  initialMode = isOnyxDevice() ? "eink" : "sepia",
+  initialMode = "sepia",
 }: {
   children: ReactNode;
   initialMode?: ThemeMode;
@@ -212,15 +172,11 @@ export function ThemeProvider({
 
   useEffect(() => {
     SecureStore.getItemAsync(STORAGE_KEY).then((saved) => {
-      if (THEME_MODES.includes(saved as ThemeMode)) {
-        setModeState(saved as ThemeMode);
+      if (saved === "light" || saved === "dark" || saved === "sepia") {
+        setModeState(saved);
       }
     });
   }, []);
-
-  // Set synchronously during render so children rendered in this pass
-  // (animations, modals) already see the right value.
-  setEinkEnabled(mode === "eink");
 
   const setMode = useCallback((m: ThemeMode) => {
     setModeState(m);
@@ -232,7 +188,6 @@ export function ThemeProvider({
     colors: THEME_MAP[mode],
     setMode,
     isDark: mode === "dark",
-    isEink: mode === "eink",
   };
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
@@ -246,4 +201,4 @@ export function useTheme(): ThemeContextValue {
  * Helper: get the initial theme synchronously for static styles.
  * Components that need reactive theme should use useTheme() instead.
  */
-export { lightColors, darkColors, sepiaColors, einkColors, THEME_MAP };
+export { lightColors, darkColors, sepiaColors, THEME_MAP };

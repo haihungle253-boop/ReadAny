@@ -9,8 +9,7 @@ import { normalizeEmbeddingEndpointUrl, testEmbeddingEndpoint } from "@readany/c
 import { Check, Cloud, Plus, Trash2, X } from "lucide-react-native";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator } from "@/components/eink/EinkAware";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import Animated, { SlideInRight } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import SearchSvg from "../../../../assets/illustrations/search.svg";

@@ -8,8 +8,8 @@ import { testDeepLConnection } from "@readany/core/translation/providers";
 import { AlertCircle, Check, CheckCircle2 } from "lucide-react-native";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator } from "@/components/eink/EinkAware";
 import {
+  ActivityIndicator,
   Pressable,
   StyleSheet,
   Text,

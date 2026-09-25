@@ -7,6 +7,7 @@ import {
   ShareIcon,
   XIcon,
 } from "@/components/ui/Icon";
+import { KeyboardAwareScrollView } from "@/components/ui/KeyboardAwareScrollView";
 import { SyncButton } from "@/components/ui/SyncButton";
 import { openMobileBook } from "@/lib/library/open-mobile-book";
 import type { RootStackParamList } from "@/navigation/RootNavigator";
@@ -26,11 +27,11 @@ import { eventBus } from "@readany/core/utils/event-bus";
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Modal } from "@/components/eink/EinkAware";
 import {
   Alert,
   FlatList,
   Image,
+  Modal,
   Pressable,
   ScrollView,
   Text,
@@ -440,7 +441,7 @@ export function NotesView({
             </Text>
           </View>
         ) : (
-          <ScrollView style={s.detailList} showsVerticalScrollIndicator={false}>
+          <KeyboardAwareScrollView style={s.detailList} showsVerticalScrollIndicator={false}>
             {itemsByChapter.map(({ chapter, items }) => (
               <View key={chapter} style={s.chapterGroup}>
                 {/* Chapter divider */}
@@ -477,7 +478,7 @@ export function NotesView({
               </View>
             ))}
             <View style={{ height: 24 }} />
-          </ScrollView>
+          </KeyboardAwareScrollView>
         )}
 
         {/* Export menu */}

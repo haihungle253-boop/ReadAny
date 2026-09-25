@@ -1,4 +1,5 @@
 import { MarkdownRenderer } from "@/components/chat/MarkdownRenderer";
+import { ChatTextScale } from "@/lib/chat-font/text-scale";
 import { BookmarkRibbon } from "@/components/reader/BookmarkRibbon";
 import { ChapterTranslationSheet } from "@/components/reader/ChapterTranslationSheet";
 import { ReadingProgressSlider } from "@/components/reader/ReadingProgressSlider";
@@ -52,13 +53,14 @@ import * as DocumentPicker from "expo-document-picker";
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Modal } from "@/components/eink/EinkAware";
 import {
+  ActivityIndicator,
   Alert,
   Animated,
   AppState,
   type AppStateStatus,
   Easing,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -71,7 +73,6 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
-import { notePageTurn } from "@/lib/eink/eink-refresh";
 
 // ── Extracted modules ──
 import { ReaderNoteViewModal } from "./reader/ReaderNoteViewModal";
@@ -141,11 +142,12 @@ function shouldConfirmReimportCandidate(
   const formatMismatch = originalBook.format !== candidate.format;
   return titleMismatch || (formatMismatch && authorMismatch);
 }
-const NOTE_TOOLTIP_WIDTH = 300;
 const NOTE_TOOLTIP_SIDE_PADDING = 12;
+// Roomy on tablets, full-width minus padding on phones
+const NOTE_TOOLTIP_WIDTH = Math.min(560, SCREEN_WIDTH - NOTE_TOOLTIP_SIDE_PADDING * 2);
+const NOTE_TOOLTIP_SCREEN_MARGIN = 24;
 const NOTE_TOOLTIP_ABOVE_OFFSET = 2;
 const NOTE_TOOLTIP_BELOW_OFFSET = 8;
-const NOTE_TOOLTIP_TOP_THRESHOLD = 180;
 import { useRubyStore } from "@readany/core/stores/ruby-store";
 import { ReaderSettingsPanel } from "./reader/ReaderSettingsPanel";
 import { ReaderTOCPanel } from "./reader/ReaderTOCPanel";
@@ -155,7 +157,7 @@ import {
   SCREEN_WIDTH,
 } from "./reader/reader-constants";
 import { BatteryIcon, ListIcon, SettingsIcon } from "./reader/reader-icons";
-import { makeStyles, noteTooltipMdStyles } from "./reader/reader-styles";
+import { makeStyles } from "./reader/reader-styles";
 import { useReaderBookmark } from "./reader/useReaderBookmark";
 import { useReaderSearch } from "./reader/useReaderSearch";
 import { useReaderSystemInfo } from "./reader/useReaderSystemInfo";
@@ -592,6 +594,7 @@ export function ReaderScreen({ route, navigation }: Props) {
         paragraphSpacing: settings.paragraphSpacing,
         pageMargin: settings.pageMargin,
         fontTheme: settings.fontTheme,
+        useBookFonts: settings.useBookFonts,
         viewMode: settings.viewMode,
         paginatedLayout: settings.paginatedLayout,
         customFontFaceCSS: fontCSS,
@@ -633,8 +636,6 @@ export function ReaderScreen({ route, navigation }: Props) {
       });
       if (loading) {
         setLoading(false);
-      } else {
-        notePageTurn();
       }
       // Track section changes for chapter translation reset
       const newSection = detail.section?.current ?? 0;
@@ -865,11 +866,8 @@ export function ReaderScreen({ route, navigation }: Props) {
         cfi: detail.cfi,
         position: detail.position,
       });
-      // Auto-hide after 4 seconds
-      noteTooltipTimer.current = setTimeout(() => {
-        setNoteTooltip(null);
-        noteTooltipTimer.current = null;
-      }, 4000);
+      // Stays until tapped away: a 4s auto-hide was too short to read longer
+      // notes (and costs another refresh on e-ink).
     },
     onPageSnippet: (_text: string) => {
       // page snippet handled by bookmark hook if pending
@@ -1142,6 +1140,7 @@ export function ReaderScreen({ route, navigation }: Props) {
             paragraphSpacing: readSettings.paragraphSpacing,
             pageMargin: readSettings.pageMargin,
             fontTheme: readSettings.fontTheme,
+            useBookFonts: readSettings.useBookFonts,
             viewMode: readSettings.viewMode,
             paginatedLayout: readSettings.paginatedLayout,
           },
@@ -1152,7 +1151,7 @@ export function ReaderScreen({ route, navigation }: Props) {
           foreground: colors.foreground,
           muted: colors.mutedForeground,
           primary: colors.primary,
-          eink: themeMode === "eink",
+          themeMode,
         });
       } catch (err: any) {
         console.error("[ReaderScreen] Failed to load book:", err);
@@ -1230,7 +1229,7 @@ export function ReaderScreen({ route, navigation }: Props) {
       foreground: colors.foreground,
       muted: colors.mutedForeground,
       primary: colors.primary,
-      eink: themeMode === "eink",
+      themeMode,
     });
   }, [themeMode, webViewReady]);
 
@@ -1459,6 +1458,19 @@ export function ReaderScreen({ route, navigation }: Props) {
         },
       }
     : null;
+
+  // Place the note tooltip on the side of the highlight with more room and
+  // let long notes scroll inside it instead of being cut off.
+  const noteTooltipLayout = (() => {
+    if (!adjustedNoteTooltip) return { above: false, maxContentHeight: 0 };
+    const { selectionTop, selectionBottom } = adjustedNoteTooltip.position;
+    const spaceAbove = selectionTop - NOTE_TOOLTIP_ABOVE_OFFSET - insets.top;
+    const spaceBelow = SCREEN_HEIGHT - selectionBottom - NOTE_TOOLTIP_BELOW_OFFSET - insets.bottom;
+    const above = spaceAbove > spaceBelow;
+    const room = (above ? spaceAbove : spaceBelow) - NOTE_TOOLTIP_SCREEN_MARGIN;
+    // 24 = tooltip padding (12 top + 12 bottom)
+    return { above, maxContentHeight: Math.max(80, Math.min(SCREEN_HEIGHT * 0.5, room) - 24) };
+  })();
 
   return (
     <View style={[s.container, { paddingBottom: insets.bottom }]}>
@@ -1689,48 +1701,48 @@ export function ReaderScreen({ route, navigation }: Props) {
               setNoteTooltip(null);
             }}
           />
-          <Pressable
-            style={[
-              s.noteTooltip,
-              {
-                left: Math.max(
-                  NOTE_TOOLTIP_SIDE_PADDING,
-                  Math.min(
-                    adjustedNoteTooltip.position.x - NOTE_TOOLTIP_WIDTH / 2,
-                    SCREEN_WIDTH - NOTE_TOOLTIP_WIDTH - NOTE_TOOLTIP_SIDE_PADDING,
+          <ChatTextScale>
+            <Pressable
+              style={[
+                s.noteTooltip,
+                {
+                  left: Math.max(
+                    NOTE_TOOLTIP_SIDE_PADDING,
+                    Math.min(
+                      adjustedNoteTooltip.position.x - NOTE_TOOLTIP_WIDTH / 2,
+                      SCREEN_WIDTH - NOTE_TOOLTIP_WIDTH - NOTE_TOOLTIP_SIDE_PADDING,
+                    ),
                   ),
-                ),
-                ...(adjustedNoteTooltip.position.selectionTop > NOTE_TOOLTIP_TOP_THRESHOLD
-                  ? {
-                      bottom:
-                        SCREEN_HEIGHT -
-                        adjustedNoteTooltip.position.selectionTop +
-                        NOTE_TOOLTIP_ABOVE_OFFSET,
-                    }
-                  : {
-                      top: adjustedNoteTooltip.position.selectionBottom + NOTE_TOOLTIP_BELOW_OFFSET,
-                    }),
-              },
-            ]}
-            onPress={(event) => {
-              event.stopPropagation();
-              suppressReaderTapUntilRef.current = Date.now() + 550;
-            }}
-            onPressIn={(event) => {
-              event.stopPropagation();
-              suppressReaderTapUntilRef.current = Date.now() + 550;
-            }}
-            onStartShouldSetResponder={() => true}
-            onMoveShouldSetResponder={() => true}
-            onResponderTerminationRequest={() => false}
-          >
-            <View style={s.noteTooltipContent}>
-              <MarkdownRenderer
-                content={adjustedNoteTooltip.note || ""}
-                styleOverrides={noteTooltipMdStyles}
-              />
-            </View>
-          </Pressable>
+                  width: NOTE_TOOLTIP_WIDTH,
+                  ...(noteTooltipLayout.above
+                    ? {
+                        bottom:
+                          SCREEN_HEIGHT -
+                          adjustedNoteTooltip.position.selectionTop +
+                          NOTE_TOOLTIP_ABOVE_OFFSET,
+                      }
+                    : {
+                        top: adjustedNoteTooltip.position.selectionBottom + NOTE_TOOLTIP_BELOW_OFFSET,
+                      }),
+                },
+              ]}
+              onPress={(event) => {
+                event.stopPropagation();
+                suppressReaderTapUntilRef.current = Date.now() + 550;
+              }}
+              onPressIn={(event) => {
+                event.stopPropagation();
+                suppressReaderTapUntilRef.current = Date.now() + 550;
+              }}
+              onStartShouldSetResponder={() => true}
+              onMoveShouldSetResponder={() => true}
+              onResponderTerminationRequest={() => false}
+            >
+              <ScrollView style={{ maxHeight: noteTooltipLayout.maxContentHeight }}>
+                <MarkdownRenderer content={adjustedNoteTooltip.note || ""} />
+              </ScrollView>
+            </Pressable>
+          </ChatTextScale>
         </View>
       )}
 

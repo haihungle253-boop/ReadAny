@@ -9,8 +9,8 @@ import { SYNC_SECRET_KEYS, type WebDavConfig } from "@readany/core/sync/sync-bac
 import { AlertCircle, CheckCircle2, Eye, EyeOff } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator } from "@/components/eink/EinkAware";
 import {
+  ActivityIndicator,
   Pressable,
   StyleSheet,
   Text,

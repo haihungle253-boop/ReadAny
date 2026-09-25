@@ -57,13 +57,14 @@ import { File as ExpoFile } from "expo-file-system";
  */
 import { type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator, Modal } from "@/components/eink/EinkAware";
 import {
+  ActivityIndicator,
   Alert,
   Animated,
   FlatList,
   Image,
   Keyboard,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
@@ -73,6 +74,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { KeyboardAvoidingView } from "react-native-keyboard-controller";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { TagManagementSheet } from "./library/TagManagementSheet";
 import { useBookDownload } from "./library/useBookDownload";
@@ -1102,36 +1104,41 @@ export function LibraryScreen() {
         animationType="fade"
         onRequestClose={() => setGroupNameModal(null)}
       >
-        <Pressable style={s.groupModalOverlay} onPress={() => setGroupNameModal(null)}>
-          <Pressable style={s.groupModalCard} onPress={() => {}}>
-            <Text style={s.groupModalTitle}>
-              {groupNameModal?.mode === "rename"
-                ? t("common.rename", "重命名")
-                : t("library.createGroup", "新建分组")}
-            </Text>
-            <TextInput
-              style={s.groupModalInput}
-              value={groupNameInput}
-              onChangeText={setGroupNameInput}
-              placeholder={t("library.groupNamePrompt", "分组名称")}
-              placeholderTextColor={colors.mutedForeground}
-              autoFocus
-              returnKeyType="done"
-              onSubmitEditing={() => void submitGroupName()}
-            />
-            <View style={s.groupModalActions}>
-              <TouchableOpacity
-                style={s.groupModalSecondary}
-                onPress={() => setGroupNameModal(null)}
-              >
-                <Text style={s.groupModalSecondaryText}>{t("common.cancel", "取消")}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={s.groupModalPrimary} onPress={() => void submitGroupName()}>
-                <Text style={s.groupModalPrimaryText}>{t("common.confirm", "确定")}</Text>
-              </TouchableOpacity>
-            </View>
+        <KeyboardAvoidingView style={s.groupModalKeyboardRoot} behavior="height">
+          <Pressable style={s.groupModalOverlay} onPress={() => setGroupNameModal(null)}>
+            <Pressable style={s.groupModalCard} onPress={() => {}}>
+              <Text style={s.groupModalTitle}>
+                {groupNameModal?.mode === "rename"
+                  ? t("common.rename", "重命名")
+                  : t("library.createGroup", "新建分组")}
+              </Text>
+              <TextInput
+                style={s.groupModalInput}
+                value={groupNameInput}
+                onChangeText={setGroupNameInput}
+                placeholder={t("library.groupNamePrompt", "分组名称")}
+                placeholderTextColor={colors.mutedForeground}
+                autoFocus
+                returnKeyType="done"
+                onSubmitEditing={() => void submitGroupName()}
+              />
+              <View style={s.groupModalActions}>
+                <TouchableOpacity
+                  style={s.groupModalSecondary}
+                  onPress={() => setGroupNameModal(null)}
+                >
+                  <Text style={s.groupModalSecondaryText}>{t("common.cancel", "取消")}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={s.groupModalPrimary}
+                  onPress={() => void submitGroupName()}
+                >
+                  <Text style={s.groupModalPrimaryText}>{t("common.confirm", "确定")}</Text>
+                </TouchableOpacity>
+              </View>
+            </Pressable>
           </Pressable>
-        </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
 
       <TagManagementSheet
@@ -1376,6 +1383,7 @@ const makeStyles = (
     gridRow: { gap: layout.gridGap, justifyContent: "flex-start" },
     gridContent: { paddingBottom: 24, paddingTop: 4, width: "100%" },
     gridItem: { width: layout.gridItemWidth, marginBottom: layout.gridGap },
+    groupModalKeyboardRoot: { flex: 1 },
     groupModalOverlay: {
       flex: 1,
       backgroundColor: "rgba(0,0,0,0.24)",
@@ -1404,7 +1412,7 @@ const makeStyles = (
       marginBottom: 12,
     },
     groupModalInput: {
-      minHeight: 42,
+      height: 42,
       borderRadius: radius.lg,
       borderWidth: 1,
       borderColor: colors.border,

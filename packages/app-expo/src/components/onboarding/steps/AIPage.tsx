@@ -10,8 +10,8 @@ import { getDefaultBaseUrl, PROVIDER_CONFIGS, providerRequiresApiKey } from "@re
 import { AlertCircle, CheckCircle2, Eye, EyeOff } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator } from "@/components/eink/EinkAware";
 import {
+  ActivityIndicator,
   Pressable,
   StyleSheet,
   Text,
@@ -29,6 +29,7 @@ const ONBOARDING_ENDPOINT_ID = "onboarding-ai-endpoint";
 
 const PROVIDER_OPTIONS: { id: AIProviderType; name: string }[] = [
   { id: "openai", name: "OpenAI" },
+  { id: "atlascloud", name: "Atlas Cloud" },
   { id: "anthropic", name: "Anthropic" },
   { id: "google", name: "Google Gemini" },
   { id: "deepseek", name: "DeepSeek" },

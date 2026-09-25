@@ -9,8 +9,8 @@ import type { NativeStackScreenProps } from "@react-navigation/native-stack";
 import { ChevronLeft, ExternalLink, MessageCircle } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ActivityIndicator } from "@/components/eink/EinkAware";
 import {
+  ActivityIndicator,
   Linking,
   ScrollView,
   StyleSheet,

@@ -8,8 +8,8 @@ import type { ThemeColors } from "@/styles/theme";
  */
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Modal } from "@/components/eink/EinkAware";
 import {
+  Modal,
   Pressable,
   ScrollView,
   StyleSheet,

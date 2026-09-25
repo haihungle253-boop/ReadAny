@@ -28,6 +28,8 @@
       "analyzeAuthor": "分析作者的論點"
     },
     "aiAssistant": "AI 閱讀助手",
+    "fontSize": "對話字號",
+    "fontSizeHint": "對話和筆記浮窗共用這個字號，書籍正文字號在閱讀設定裡調。",
     "aiAssistantDesc": "分析內容、回答問題，幫助你更好地理解書籍。",
     "deepThinking": "深度思考",
     "deepThinkingHint": "啟用更深入的分析和推理過程，回應時間可能更長",
